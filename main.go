@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/alext29/go-prium/prium"
 	"github.com/golang/glog"
-	"zerostack/go-prium/prium"
 )
 
 func main() {

@@ -7,7 +7,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 	"os"
-	//"io/ioutil"
 	"regexp"
 	"strings"
 )
@@ -218,6 +217,25 @@ func (c *Cassandra) deleteSnapshot(host string, dirs []string) error {
 			os.Exit(1)
 		}
 		c.agent.run(host, fmt.Sprintf("rm -rf %s", dir))
+	}
+	return nil
+}
+
+func (c *Cassandra) sstableload(target string, dirs map[string]bool) error {
+	hosts := c.Hosts()
+	for dir := range dirs {
+		var err error
+		for _, host := range hosts {
+			cmd := fmt.Sprintf("%s --nodes %s -v %s", *c.config.sstableloader, host, dir)
+			out, err := c.agent.run(target, cmd)
+			glog.Infof("sstableloader output: %s", out)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return errors.Wrap(err, "error running sstableloader")
+		}
 	}
 	return nil
 }

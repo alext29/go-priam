@@ -95,18 +95,21 @@ func getFileKey(environment, keyspace, parent, timestamp, host, file string, inc
 		environment, keyspace, parent, timestamp, host, dir, base)
 }
 
-func (s *S3) downloadKeys(keys []string, prefix string) error {
+// downloadKeys downloads a list of keys from S3 to local machine.
+func (s *S3) downloadKeys(keys []string, prefix string) (map[string]string, error) {
+	files := make(map[string]string)
 	for _, key := range keys {
 		glog.Infof("key: %s", key)
-		err := s.downloadKey(key, prefix)
+		file, err := s.downloadKey(key, prefix)
 		if err != nil {
-			return errors.Wrap(err, "error downloading key")
+			return nil, errors.Wrap(err, "error downloading key")
 		}
+		files[key] = file
 	}
-	return nil
+	return files, nil
 }
 
-func (s *S3) downloadKey(key, prefix string) error {
+func (s *S3) downloadKey(key, prefix string) (string, error) {
 	glog.Infof("download key: %s", key)
 	fileName := strings.TrimSuffix(fmt.Sprintf("%s/%s", prefix, key), ".gz")
 	glog.Infof("to file: %s", fileName)
@@ -116,18 +119,18 @@ func (s *S3) downloadKey(key, prefix string) error {
 	}
 	resp, err := s.svc.GetObject(params)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("error downloading key: %s", key))
+		return "", errors.Wrap(err, fmt.Sprintf("error downloading key: %s", key))
 	}
 
 	dir := path.Dir(fileName)
 	err = os.MkdirAll(dir, os.ModeDir|os.ModePerm)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("error creading dir %s", dir))
+		return "", errors.Wrap(err, fmt.Sprintf("error creading dir %s", dir))
 	}
 
 	file, err := os.Create(fileName)
 	if err != nil {
-		return errors.Wrap(err, "error opening file")
+		return "", errors.Wrap(err, "error opening file")
 	}
 
 	reader, writer := io.Pipe()
@@ -147,13 +150,13 @@ func (s *S3) downloadKey(key, prefix string) error {
 	for {
 		n, err := reader.Read(buf)
 		if err != nil && err != io.EOF {
-			return errors.Wrap(err, "error reading file")
+			return "", errors.Wrap(err, "error reading file")
 		}
 		if n == 0 {
 			break
 		}
 		if _, writeErr := file.Write(buf[:n]); writeErr != nil {
-			return errors.Wrap(err, "error writing file")
+			return "", errors.Wrap(err, "error writing file")
 		}
 		if err == io.EOF {
 			break
@@ -161,12 +164,12 @@ func (s *S3) downloadKey(key, prefix string) error {
 	}
 
 	if err = reader.Close(); err != nil {
-		return errors.Wrap(err, "error reading downloaded file")
+		return "", errors.Wrap(err, "error reading downloaded file")
 	}
 	if err = file.Close(); err != nil {
-		return errors.Wrap(err, "error closing file")
+		return "", errors.Wrap(err, "error closing file")
 	}
-	return nil
+	return fileName, nil
 }
 
 // GetSnapshotHistory retrieves snapshot history from S3.

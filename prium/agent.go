@@ -6,10 +6,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
+	"os/exec"
 	"strings"
 )
 
-// agent ...
+// agent provides methods to run
 type agent struct {
 	user       string
 	privateKey string
@@ -23,6 +24,38 @@ func newAgent(config *Config) *agent {
 		privateKey: *config.privateKey,
 		clients:    make(map[string]*ssh.Client),
 	}
+}
+
+var (
+	sshOpts = []string{
+		"-o", "PasswordAuthentication=no",
+		"-o", "CheckHostIP=no",
+		"-o", "ChallengeResponseAuthentication=no",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "KbdInteractiveAuthentication=no",
+		"-o", "BatchMode=yes",
+	}
+)
+
+// uploadFile uploads a file from local machine to remote machine.
+func (a *agent) uploadFile(host, localPath, remotePath string) error {
+
+	// create remote dir
+	_, err := a.run(host, fmt.Sprintf("mkdir -p %s", remotePath))
+	if err != nil {
+		return errors.Wrap(err, "could not create remote directory")
+	}
+
+	// copy file
+	cmd := exec.Command("scp")
+	cmd.Args = append(cmd.Args, sshOpts...)
+	cmd.Args = append(cmd.Args, localPath)
+	dst := fmt.Sprintf("%s@%s:%s", a.user, host, remotePath)
+	cmd.Args = append(cmd.Args, dst)
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return errors.Wrap(err, "could not copy file to cassandra host")
+	}
+	return nil
 }
 
 // list all directories in given directory
