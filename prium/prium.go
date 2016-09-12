@@ -52,11 +52,8 @@ func (p *Prium) Backup() error {
 		return fmt.Errorf("unable to get any cassandra hosts")
 	}
 
-	env := p.config.Env
-	keyspace := p.config.Keyspace
-
 	// get snapshot history from S3
-	h, err := p.s3.GetSnapshotHistory(env, keyspace)
+	h, err := p.s3.GetSnapshotHistory(p.config.AwsBasePath, p.config.Keyspace)
 	if err != nil {
 		return errors.Wrap(err, "error getting snapshot history")
 	}
@@ -81,14 +78,14 @@ func (p *Prium) Backup() error {
 		glog.Infof("take snapshot on cassandra host: %s", host)
 
 		// create snapshot
-		files, dirs, err := p.cassandra.Snapshot(host, timestamp, keyspace)
+		files, dirs, err := p.cassandra.Snapshot(host, timestamp, p.config.Keyspace)
 		if err != nil {
 			glog.Errorf("error taking snapshot on host %s :: %v", host, err)
 			continue
 		}
 
 		// upload files to s3
-		if err = p.s3.UploadFiles(env, keyspace, parent, timestamp, host, files); err != nil {
+		if err = p.s3.UploadFiles(p.config.AwsBasePath, p.config.Keyspace, parent, timestamp, host, files); err != nil {
 			glog.Errorf("error uploading files from host %s :: %v", host, err)
 		}
 
@@ -111,6 +108,8 @@ func NewTimestamp() string {
 }
 
 // Restore cassandra from a given snapshot.
+// TODO: if restoring from a cassandra node then skip copying file to
+// cassandra host.
 func (p *Prium) Restore() error {
 
 	// get all cassandra hosts
@@ -119,14 +118,12 @@ func (p *Prium) Restore() error {
 		return fmt.Errorf("did not find valid cassandra hosts")
 	}
 
-	env := p.config.Env
-	keyspace := p.config.Keyspace
 	snapshot := p.config.Snapshot
-	localTmpDir := fmt.Sprintf("%s/local", p.config.Prefix)
-	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.Prefix)
+	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
+	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
 
 	// get snapshot history from S3
-	h, err := p.s3.GetSnapshotHistory(env, keyspace)
+	h, err := p.s3.GetSnapshotHistory(p.config.AwsBasePath, p.config.Keyspace)
 	if err != nil {
 		return errors.Wrap(err, "failed to get backup history")
 	}
