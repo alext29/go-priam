@@ -64,3 +64,20 @@ func (h *SnapshotHistory) Valid(snapshot string) bool {
 	_, ok := h.keys[snapshot]
 	return ok
 }
+
+// String representation of snapshot history
+func (h *SnapshotHistory) String() string {
+
+	list := h.List()
+	if len(list) == 0 {
+		return ""
+	}
+	str := ""
+	for _, timestamp := range list {
+		if _, ok := h.parent[timestamp]; ok {
+			str = fmt.Sprintf("%s     ", str)
+		}
+		str = fmt.Sprintf("%s+-- %s\n", str, timestamp)
+	}
+	return str
+}

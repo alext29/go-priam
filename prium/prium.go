@@ -14,6 +14,7 @@ type Prium struct {
 	cassandra *Cassandra
 	config    *Config
 	s3        *S3
+	hist      *SnapshotHistory
 }
 
 // New returns a new Prium object.
@@ -40,6 +41,17 @@ func (p *Prium) Init() error {
 	return nil
 }
 
+// History prints the current list of backups in S3.
+func (p *Prium) History() error {
+
+	// get snapshot history
+	if err := p.SnapshotHistory(); err != nil {
+		return errors.Wrap(err, "error getting snapshot history")
+	}
+	glog.Infof("current backups:\n%s", p.hist)
+	return nil
+}
+
 // Backup flushes all cassandra tables to disk identifies the appropriate
 // files and copies them to the specified AWS S3 bucket.
 func (p *Prium) Backup() error {
@@ -52,19 +64,25 @@ func (p *Prium) Backup() error {
 		return fmt.Errorf("unable to get any cassandra hosts")
 	}
 
-	// get snapshot history from S3
-	h, err := p.s3.GetSnapshotHistory(p.config.AwsBasePath, p.config.Keyspace)
-	if err != nil {
+	// get snapshot history
+	if err := p.SnapshotHistory(); err != nil {
 		return errors.Wrap(err, "error getting snapshot history")
 	}
 
-	// get timestamp
-	timestamp := NewTimestamp()
+	// generate new timestamp
+	timestamp := p.NewTimestamp()
 	glog.Infof("generating snapshot with timestamp: %s", timestamp)
 
 	// get parent timestamp
 	parent := timestamp
-	snapshots := h.List()
+	snapshots := p.hist.List()
+
+	// check timestamps are monotonically increasing
+	if len(snapshots) > 0 && snapshots[len(snapshots)-1] > timestamp {
+		return fmt.Errorf("new timestamp %s less than last", timestamp)
+	}
+
+	// assign parent timestamp if incremental
 	if len(snapshots) > 0 && p.config.Incremental {
 		parent = snapshots[len(snapshots)-1]
 	} else {
@@ -98,13 +116,26 @@ func (p *Prium) Backup() error {
 	return nil
 }
 
-// NewTimestamp generates a new timestamp which is current Unix time, i.e
-// seconds elapsed since 1st January 1970. The code assumes timestamps
-// are monotonically increasing and is used by restore function to determine
-// which backup is the latest as well as the order of incremental backups.
-// TODO: barf if timestamp is older than the last backup.
-func NewTimestamp() string {
-	return fmt.Sprintf("%d", time.Now().Unix())
+// SnapshotHistory returns snapshot history
+func (p *Prium) SnapshotHistory() error {
+	if p.hist != nil {
+		return nil
+	}
+	// get snapshot history from S3 if not already present
+	h, err := p.s3.SnapshotHistory()
+	if err != nil {
+		return errors.Wrap(err, "error getting snapshot history")
+	}
+	p.hist = h
+	return nil
+}
+
+// NewTimestamp generates a new timestamp which is based on current time.
+// The code assumes timestamps are monotonically increasing and is used by
+// restore function to determine which backup is the latest as well as the
+// order of incremental backups.
+func (p *Prium) NewTimestamp() string {
+	return time.Now().Format("2006-01-02_15:04:05")
 }
 
 // Restore cassandra from a given snapshot.
@@ -122,14 +153,13 @@ func (p *Prium) Restore() error {
 	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
 	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
 
-	// get snapshot history from S3
-	h, err := p.s3.GetSnapshotHistory(p.config.AwsBasePath, p.config.Keyspace)
-	if err != nil {
-		return errors.Wrap(err, "failed to get backup history")
+	// get snapshot history
+	if err := p.SnapshotHistory(); err != nil {
+		return err
 	}
 
 	if snapshot == "" {
-		snapshots := h.List()
+		snapshots := p.hist.List()
 		if len(snapshots) > 0 {
 			snapshot = snapshots[len(snapshots)-1]
 		}
@@ -138,12 +168,12 @@ func (p *Prium) Restore() error {
 		return fmt.Errorf("no existing backup to restore from")
 	}
 
-	if !h.Valid(snapshot) {
+	if !p.hist.Valid(snapshot) {
 		return fmt.Errorf("%s is not a valid snapshot", snapshot)
 	}
 	glog.Infof("restoring to snapshot: %s", snapshot)
 
-	keys, err := h.Keys(snapshot)
+	keys, err := p.hist.Keys(snapshot)
 	if err != nil {
 		return errors.Wrap(err, "failed to get all keys")
 	}
