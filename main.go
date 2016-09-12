@@ -45,6 +45,11 @@ func main() {
 			os.Exit(1)
 		}
 		glog.Infof("restore completed")
+	case "history":
+		if err := p.History(); err != nil {
+			glog.Error(err)
+			os.Exit(1)
+		}
 	default:
 		glog.Errorf("unrecognized command '%s'", cmd)
 		printUsage()

@@ -2,6 +2,7 @@ package prium
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
@@ -87,6 +88,7 @@ func (a *Agent) Run(host, cmd string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("error establishing ssh session to host %s", host))
 	}
+	glog.V(2).Infof("run@%s: %s", host, cmd)
 	return s.CombinedOutput(cmd)
 }
 

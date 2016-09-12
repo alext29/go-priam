@@ -176,9 +176,9 @@ func (s *S3) downloadKey(key, prefix string) (string, error) {
 	return fileName, nil
 }
 
-// GetSnapshotHistory retrieves snapshot history from S3.
-func (s *S3) GetSnapshotHistory(env, keyspace string) (*SnapshotHistory, error) {
-	prefix := fmt.Sprintf("%s/%s", env, keyspace)
+// SnapshotHistory retrieves snapshot history from S3.
+func (s *S3) SnapshotHistory() (*SnapshotHistory, error) {
+	prefix := fmt.Sprintf("%s/%s", s.config.AwsBasePath, s.config.Keyspace)
 	params := &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.config.AwsBucket),
 		Prefix: aws.String(prefix),
