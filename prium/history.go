@@ -65,7 +65,7 @@ func (h *SnapshotHistory) Valid(snapshot string) bool {
 	return ok
 }
 
-// String representation of snapshot history
+// String representation of snapshot history.
 func (h *SnapshotHistory) String() string {
 
 	list := h.List()
