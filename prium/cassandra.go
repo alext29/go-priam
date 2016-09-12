@@ -32,10 +32,10 @@ func (c *Cassandra) Init() error {
 
 // Hosts returns slice of cassandra hosts
 func (c *Cassandra) Hosts() []string {
-	cmd := fmt.Sprintf("%s status", *c.config.nodetool)
-	bytes, err := c.agent.Run(*c.config.host, cmd)
+	cmd := fmt.Sprintf("%s status", c.config.nodetool)
+	bytes, err := c.agent.Run(c.config.host, cmd)
 	if err != nil {
-		glog.Errorf("error running cmd '%s' on host '%s' :: %v", cmd, *c.config.host, err)
+		glog.Errorf("error running cmd '%s' on host '%s' :: %v", cmd, c.config.host, err)
 		return nil
 	}
 	var hosts []string
@@ -56,7 +56,7 @@ func (c *Cassandra) Hosts() []string {
 
 // Snapshot takes incremental or full snapshot.
 func (c *Cassandra) Snapshot(host, ts, ks string) ([]string, []string, error) {
-	if *c.config.incremental {
+	if c.config.incremental {
 		return c.SnapshotInc(host, ks)
 	}
 	return c.SnapshotFull(host, ts, ks)
@@ -64,7 +64,7 @@ func (c *Cassandra) Snapshot(host, ts, ks string) ([]string, []string, error) {
 
 // SnapshotFull takes a full snapshot.
 func (c *Cassandra) SnapshotFull(host, ts, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s snapshot -t %s %s", *c.config.nodetool, ts, ks)
+	cmd := fmt.Sprintf("%s snapshot -t %s %s", c.config.nodetool, ts, ks)
 	glog.V(2).Infof("snapshot command: %s", cmd)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
@@ -118,7 +118,7 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 
 // SnapshotInc takes an incremental backup.
 func (c *Cassandra) SnapshotInc(host, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s flush  %s", *c.config.nodetool, ks)
+	cmd := fmt.Sprintf("%s flush  %s", c.config.nodetool, ks)
 	glog.V(2).Infof("snapshot command: %s", cmd)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
@@ -193,7 +193,7 @@ func (c *Cassandra) hostDataDirs(host string) ([]string, error) {
 }
 
 func (c *Cassandra) hostCassandraYaml(host string) ([]byte, error) {
-	return c.agent.Run(host, fmt.Sprintf("cat %s/cassandra.yaml", *c.config.cassandraConf))
+	return c.agent.Run(host, fmt.Sprintf("cat %s/cassandra.yaml", c.config.cassandraConf))
 }
 
 func (c *Cassandra) deleteSnapshot(host string, dirs []string) error {
@@ -213,7 +213,7 @@ func (c *Cassandra) sstableload(target string, dirs map[string]bool) error {
 	for dir := range dirs {
 		var err error
 		for _, host := range hosts {
-			cmd := fmt.Sprintf("%s --nodes %s -v %s", *c.config.sstableloader, host, dir)
+			cmd := fmt.Sprintf("%s --nodes %s -v %s", c.config.sstableloader, host, dir)
 			out, err := c.agent.Run(target, cmd)
 			glog.Infof("sstableloader output: %s", out)
 			if err == nil {

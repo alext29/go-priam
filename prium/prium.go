@@ -52,8 +52,8 @@ func (p *Prium) Backup() error {
 		return fmt.Errorf("unable to get any cassandra hosts")
 	}
 
-	env := *p.config.env
-	keyspace := *p.config.keyspace
+	env := p.config.env
+	keyspace := p.config.keyspace
 
 	// get snapshot history from S3
 	h, err := p.s3.GetSnapshotHistory(env, keyspace)
@@ -68,10 +68,10 @@ func (p *Prium) Backup() error {
 	// get parent timestamp
 	parent := timestamp
 	snapshots := h.List()
-	if len(snapshots) > 0 && *p.config.incremental {
+	if len(snapshots) > 0 && p.config.incremental {
 		parent = snapshots[len(snapshots)-1]
 	} else {
-		*p.config.incremental = false
+		p.config.incremental = false
 	}
 	glog.Infof("timestamp of parent snapshot: %s", parent)
 
@@ -119,11 +119,11 @@ func (p *Prium) Restore() error {
 		return fmt.Errorf("did not find valid cassandra hosts")
 	}
 
-	env := *p.config.env
-	keyspace := *p.config.keyspace
-	snapshot := *p.config.snapshot
-	localTmpDir := fmt.Sprintf("%s/local", *p.config.prefix)
-	remoteTmpDir := fmt.Sprintf("%s/remote", *p.config.prefix)
+	env := p.config.env
+	keyspace := p.config.keyspace
+	snapshot := p.config.snapshot
+	localTmpDir := fmt.Sprintf("%s/local", p.config.prefix)
+	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.prefix)
 
 	// get snapshot history from S3
 	h, err := p.s3.GetSnapshotHistory(env, keyspace)

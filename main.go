@@ -11,43 +11,39 @@ import (
 func main() {
 
 	// get configuration file
-	config := prium.NewConfig()
-	if err := config.ParseFlags(); err != nil {
-		glog.Errorf("error parsing flags :: %v\n", err)
+	config, err := prium.NewConfig()
+	if err != nil {
+		glog.Error(err)
 		printUsage()
 		return
 	}
 
+	// make sure we have a valid command
 	if len(flag.Args()) == 0 {
-		glog.Error("zero length of arguments")
+		glog.Error("please provide valid command")
 		printUsage()
-		return
+		os.Exit(1)
 	}
 
+	// create prium object
 	p := prium.New(config)
 	p.Init()
 
-	// get command
+	// parse and run command
 	cmd := flag.Arg(0)
-	glog.Infof("got command: %s\n", cmd)
-
 	switch cmd {
 	case "backup":
 		if err := p.Backup(); err != nil {
-			glog.Errorf("%v", err)
+			glog.Error(err)
 			os.Exit(1)
 		}
 		glog.Infof("backup completed")
 	case "restore":
 		if err := p.Restore(); err != nil {
-			glog.Errorf("%v", err)
+			glog.Error(err)
 			os.Exit(1)
 		}
 		glog.Infof("restore completed")
-	case "":
-		glog.Errorf("did not get valid command")
-		printUsage()
-		os.Exit(1)
 	default:
 		glog.Errorf("unrecognized command '%s'", cmd)
 		printUsage()
