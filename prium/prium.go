@@ -52,8 +52,8 @@ func (p *Prium) Backup() error {
 		return fmt.Errorf("unable to get any cassandra hosts")
 	}
 
-	env := p.config.env
-	keyspace := p.config.keyspace
+	env := p.config.Env
+	keyspace := p.config.Keyspace
 
 	// get snapshot history from S3
 	h, err := p.s3.GetSnapshotHistory(env, keyspace)
@@ -68,10 +68,10 @@ func (p *Prium) Backup() error {
 	// get parent timestamp
 	parent := timestamp
 	snapshots := h.List()
-	if len(snapshots) > 0 && p.config.incremental {
+	if len(snapshots) > 0 && p.config.Incremental {
 		parent = snapshots[len(snapshots)-1]
 	} else {
-		p.config.incremental = false
+		p.config.Incremental = false
 	}
 	glog.Infof("timestamp of parent snapshot: %s", parent)
 
@@ -119,11 +119,11 @@ func (p *Prium) Restore() error {
 		return fmt.Errorf("did not find valid cassandra hosts")
 	}
 
-	env := p.config.env
-	keyspace := p.config.keyspace
-	snapshot := p.config.snapshot
-	localTmpDir := fmt.Sprintf("%s/local", p.config.prefix)
-	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.prefix)
+	env := p.config.Env
+	keyspace := p.config.Keyspace
+	snapshot := p.config.Snapshot
+	localTmpDir := fmt.Sprintf("%s/local", p.config.Prefix)
+	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.Prefix)
 
 	// get snapshot history from S3
 	h, err := p.s3.GetSnapshotHistory(env, keyspace)
@@ -162,8 +162,6 @@ func (p *Prium) Restore() error {
 		return errors.Wrap(err, "could not upload files to host")
 	}
 
-	glog.Infof("directories: %s", dirs)
-
 	// take snapshot on each host
 	err = p.cassandra.sstableload(hosts[0], dirs)
 	if err != nil {
@@ -175,14 +173,11 @@ func (p *Prium) Restore() error {
 
 // uploadFilesToHost copies cassandra failes to a local directory on
 // one of the cassandra hosts.
-func (p *Prium) uploadFilesToHost(host, remoteDir string, files map[string]string) (map[string]bool, error) {
-
+func (p *Prium) uploadFilesToHost(host, remoteTmpDir string, files map[string]string) (map[string]bool, error) {
 	dirs := make(map[string]bool)
 	for key, localFile := range files {
-		glog.Infof("key: %s", key)
-		glog.Infof("file: %s", localFile)
-		remoteDir := path.Dir(fmt.Sprintf("%s/%s", remoteDir, key))
-		glog.Infof("remote file: %s", remoteDir)
+		glog.V(2).Infof("copy to %s: %s", host, key)
+		remoteDir := path.Dir(fmt.Sprintf("%s/%s", remoteTmpDir, key))
 		err := p.agent.UploadFile(host, localFile, remoteDir)
 		if err != nil {
 			return nil, errors.Wrap(err, "error uploading backup files to host")

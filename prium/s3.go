@@ -37,8 +37,8 @@ func NewS3(config *Config, agent *Agent) *S3 {
 func (s *S3) Init() error {
 	// create new session
 	sess := session.New(&aws.Config{
-		Region:      aws.String(s.config.awsRegion),
-		Credentials: credentials.NewStaticCredentials(s.config.awsAccessKey, s.config.awsSecretKey, ""),
+		Region:      aws.String(s.config.AwsRegion),
+		Credentials: credentials.NewStaticCredentials(s.config.AwsAccessKey, s.config.AwsSecretKey, ""),
 	})
 	s.svc = s3.New(sess)
 	s.uploader = s3manager.NewUploader(sess)
@@ -51,7 +51,7 @@ func (s *S3) Init() error {
 func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []string) error {
 	glog.Infof("uploading files to s3...")
 	for _, file := range files {
-		key := getFileKey(env, keyspace, parent, timestamp, host, file, s.config.incremental)
+		key := getFileKey(env, keyspace, parent, timestamp, host, file, s.config.Incremental)
 		glog.Infof("upload key: %s", key)
 
 		// read bytes from file@host
@@ -73,7 +73,7 @@ func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []
 
 		// details of file to upload
 		params := &s3manager.UploadInput{
-			Bucket: aws.String(s.config.awsBucket),
+			Bucket: aws.String(s.config.AwsBucket),
 			Body:   reader,
 			Key:    aws.String(key),
 		}
@@ -102,9 +102,9 @@ func getFileKey(environment, keyspace, parent, timestamp, host, file string, inc
 
 // downloadKeys downloads a list of keys from S3 to local machine.
 func (s *S3) downloadKeys(keys []string, prefix string) (map[string]string, error) {
+	glog.Infof("downloading %d keys", len(keys))
 	files := make(map[string]string)
 	for _, key := range keys {
-		glog.Infof("key: %s", key)
 		file, err := s.downloadKey(key, prefix)
 		if err != nil {
 			return nil, errors.Wrap(err, "error downloading key")
@@ -115,11 +115,10 @@ func (s *S3) downloadKeys(keys []string, prefix string) (map[string]string, erro
 }
 
 func (s *S3) downloadKey(key, prefix string) (string, error) {
-	glog.Infof("download key: %s", key)
+	glog.V(2).Infof("download key: %s", key)
 	fileName := strings.TrimSuffix(fmt.Sprintf("%s/%s", prefix, key), ".gz")
-	glog.Infof("to file: %s", fileName)
 	params := &s3.GetObjectInput{
-		Bucket: aws.String(s.config.awsBucket),
+		Bucket: aws.String(s.config.AwsBucket),
 		Key:    aws.String(key),
 	}
 	resp, err := s.svc.GetObject(params)
@@ -181,7 +180,7 @@ func (s *S3) downloadKey(key, prefix string) (string, error) {
 func (s *S3) GetSnapshotHistory(env, keyspace string) (*SnapshotHistory, error) {
 	prefix := fmt.Sprintf("%s/%s", env, keyspace)
 	params := &s3.ListObjectsV2Input{
-		Bucket: aws.String(s.config.awsBucket),
+		Bucket: aws.String(s.config.AwsBucket),
 		Prefix: aws.String(prefix),
 	}
 	resp, err := s.svc.ListObjectsV2(params)

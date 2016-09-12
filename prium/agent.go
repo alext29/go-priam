@@ -20,8 +20,8 @@ type Agent struct {
 // NewAgent returns a new Agent.
 func NewAgent(config *Config) *Agent {
 	return &Agent{
-		user:       config.user,
-		privateKey: config.privateKey,
+		user:       config.User,
+		privateKey: config.PrivateKey,
 		clients:    make(map[string]*ssh.Client),
 	}
 }

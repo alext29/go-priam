@@ -17,6 +17,7 @@ func main() {
 		printUsage()
 		return
 	}
+	glog.Infof("prium config %s", config)
 
 	// make sure we have a valid command
 	if len(flag.Args()) == 0 {
@@ -49,6 +50,7 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
+
 }
 
 func printUsage() {

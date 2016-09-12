@@ -4,27 +4,30 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"os"
 	"os/user"
 	"path"
 )
 
 // Config holds prium configuration parameters.
 type Config struct {
-	env           string
-	host          string
-	user          string
-	incremental   bool
-	prefix        string
-	snapshot      string
-	privateKey    string
-	nodetool      string
-	cassandraConf string
-	keyspace      string
-	awsBucket     string
-	awsRegion     string
-	awsSecretKey  string
-	awsAccessKey  string
-	sstableloader string
+	Env           string
+	Host          string
+	User          string
+	Incremental   bool
+	Prefix        string
+	Snapshot      string
+	PrivateKey    string `yaml:"private-key"`
+	Nodetool      string
+	CassandraConf string `yaml:"cassandra-conf"`
+	Keyspace      string
+	AwsBucket     string `yaml:"aws-bucket"`
+	AwsRegion     string `yaml:"aws-region"`
+	AwsSecretKey  string `yaml:"aws-secret-key"`
+	AwsAccessKey  string `yaml:"aws-access-key"`
+	Sstableloader string
 }
 
 // NewConfig returns prium configuration. It starts with the default config,
@@ -38,7 +41,10 @@ func NewConfig() (*Config, error) {
 		return nil, errors.Wrap(err, "error getting default config")
 	}
 
-	// TODO: parse config file if exists
+	// parse config file
+	if err := config.parseFile(configFile()); err != nil {
+		return nil, errors.Wrap(err, "error parsing config file")
+	}
 
 	// parse command line flags
 	if err := config.parseFlags(); err != nil {
@@ -48,64 +54,132 @@ func NewConfig() (*Config, error) {
 	return config, nil
 }
 
+// defaultConfig provides a starting point config for prium.
 func defaultConfig() (*Config, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting current user")
 	}
 	return &Config{
-		env:           "go-prium-test",
-		prefix:        "/tmp/go-prium/restore",
-		nodetool:      "/usr/bin/nodetool",
-		sstableloader: "/usr/bin/sstableloader",
-		cassandraConf: "/etc/cassandra",
-		awsRegion:     "us-east-1",
-		user:          usr.Username,
-		privateKey:    path.Join(usr.HomeDir, ".ssh", "id_rsa"),
+		Env:           "go-prium-test",
+		Prefix:        "/tmp/go-prium/restore",
+		Nodetool:      "/usr/bin/nodetool",
+		Sstableloader: "/usr/bin/sstableloader",
+		CassandraConf: "/etc/cassandra",
+		AwsRegion:     "us-east-1",
+		User:          usr.Username,
+		PrivateKey:    path.Join(usr.HomeDir, ".ssh", "id_rsa"),
 	}, nil
+}
+
+// configFile returns path to prium config file.
+func configFile() string {
+
+	// use environment variable if set
+	confFile := os.Getenv("PRIUM_CONF")
+	if confFile != "" {
+		return confFile
+	}
+
+	// else check home directory
+	usr, err := user.Current()
+	if err != nil {
+		return ""
+	}
+	return path.Join(usr.HomeDir, ".prium.conf")
+}
+
+// parseFile parses prium config file. These may be overrided via
+// command line flags.
+func (c *Config) parseFile(confFile string) error {
+	if confFile == "" {
+		return nil
+	}
+
+	fmt.Printf("got conf file: %s\n", confFile)
+
+	if _, err := os.Stat(confFile); os.IsNotExist(err) {
+		return nil
+	}
+
+	fmt.Printf("reading conf file: %s\n", confFile)
+
+	bytes, err := ioutil.ReadFile(confFile)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("error reading conf file %s", confFile))
+	}
+
+	err = yaml.Unmarshal(bytes, c)
+	if err != nil {
+		return errors.Wrap(err, "error unmarshaling conf file")
+	}
+	return nil
 }
 
 // parseFlags from command line.
 func (c *Config) parseFlags() error {
-	flag.StringVar(&c.env, "environment", c.env, "unique identifier for this cassandra cluster")
-	flag.StringVar(&c.host, "host", c.host, "ip address of any one of the cassandra hosts")
-	flag.StringVar(&c.user, "user", c.user, "usename for password less ssh to cassandra host")
-	flag.StringVar(&c.keyspace, "keyspace", c.keyspace, "cassandra keyspace to backup")
-	flag.StringVar(&c.nodetool, "nodetool-path", c.nodetool, "path to nodetool on the cassandra host")
-	flag.StringVar(&c.privateKey, "private-key", c.privateKey, "path to private key used for password less ssh")
-	flag.BoolVar(&c.incremental, "incremental", c.incremental, "take incremental backup")
-	flag.StringVar(&c.cassandraConf, "cassandra-conf", c.cassandraConf, "directory where cassandra conf files are placed")
-	flag.StringVar(&c.snapshot, "snapshot", c.snapshot, "restore to this timestamp")
-	flag.StringVar(&c.prefix, "temp-dir", c.prefix, "temp directory to download files to")
-	flag.StringVar(&c.awsRegion, "aws-region", c.awsRegion, "region of s3 account")
-	flag.StringVar(&c.awsBucket, "aws-bucket", c.awsBucket, "bucket name to store backups")
-	flag.StringVar(&c.awsSecretKey, "aws-secret-key", c.awsSecretKey, "AWS Secret Access key to access S3")
-	flag.StringVar(&c.awsAccessKey, "aws-access-key", c.awsAccessKey, "AWS Access Key ID to access S3")
-	flag.StringVar(&c.sstableloader, "sstableloader", c.sstableloader, "path to sstableloader on cassandra hosts")
+	flag.BoolVar(&c.Incremental, "incremental", c.Incremental, "take incremental backup")
+	flag.StringVar(&c.Env, "environment", c.Env, "unique identifier for this cassandra cluster")
+	flag.StringVar(&c.Host, "host", c.Host, "ip address of any one of the cassandra hosts")
+	flag.StringVar(&c.User, "user", c.User, "usename for password less ssh to cassandra host")
+	flag.StringVar(&c.Keyspace, "keyspace", c.Keyspace, "cassandra keyspace to backup")
+	flag.StringVar(&c.Nodetool, "nodetool-path", c.Nodetool, "path to nodetool on the cassandra host")
+	flag.StringVar(&c.PrivateKey, "private-key", c.PrivateKey, "path to private key used for password less ssh")
+	flag.StringVar(&c.CassandraConf, "cassandra-conf", c.CassandraConf, "directory where cassandra conf files are placed")
+	flag.StringVar(&c.Snapshot, "snapshot", c.Snapshot, "restore to this timestamp")
+	flag.StringVar(&c.Prefix, "temp-dir", c.Prefix, "temp directory to download files to")
+	flag.StringVar(&c.AwsRegion, "aws-region", c.AwsRegion, "region of s3 account")
+	flag.StringVar(&c.AwsBucket, "aws-bucket", c.AwsBucket, "bucket name to store backups")
+	flag.StringVar(&c.AwsSecretKey, "aws-secret-key", c.AwsSecretKey, "AWS Secret Access key to access S3")
+	flag.StringVar(&c.AwsAccessKey, "aws-access-key", c.AwsAccessKey, "AWS Access Key ID to access S3")
+	flag.StringVar(&c.Sstableloader, "sstableloader", c.Sstableloader, "path to sstableloader on cassandra hosts")
 
 	flag.Parse()
 	return c.validateConfig()
 }
 
-// validateConfig has all the required parameters defined.
+// TODO: validateConfig checks if all required parameters are provided.
 func (c *Config) validateConfig() error {
 	switch {
-	case c.awsAccessKey == "":
-		return fmt.Errorf("please provide AWS Access Key ID via '-aws-access-key' commandline flag")
-	case c.awsSecretKey == "":
-		return fmt.Errorf("please provide AWS Secret Access key via '-aws-secret-key' commandline flag")
-	case c.privateKey == "":
-		return fmt.Errorf("path to private key for password less ssh to cassandra hosts")
-	case c.nodetool == "":
+	case c.AwsAccessKey == "":
+		return fmt.Errorf("please provide AWS Access Key ID via")
+	case c.AwsSecretKey == "":
+		return fmt.Errorf("please provide AWS Secret Access key")
+	case c.AwsBucket == "":
+		return fmt.Errorf("please provide AWS S3 bucket name")
+	case c.PrivateKey == "":
+		return fmt.Errorf("path to private key for passwordless ssh to cassandra hosts")
+	case c.Nodetool == "":
 		return fmt.Errorf("path to nodetool not provided")
-	case c.cassandraConf == "":
+	case c.CassandraConf == "":
 		return fmt.Errorf("path to casandra conf not provided")
-	case c.host == "":
+	case c.Host == "":
 		return fmt.Errorf("please provide ip address of any cassandra node")
-	case c.user == "":
+	case c.User == "":
 		return fmt.Errorf("please provide username to use for passwordless ssh")
-	case c.sstableloader == "":
+	case c.Sstableloader == "":
 		return fmt.Errorf("please provide path to sstableloader executable on cassandra host")
 	}
 	return nil
+}
+
+// String returns config in json string representation
+func (c *Config) String() string {
+	str := fmt.Sprintf("\n{")
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "environment", c.Env)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "host", c.Host)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "user", c.User)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "prefix", c.Prefix)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "snapshot", c.Snapshot)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "private-key", c.PrivateKey)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "nodetool", c.Nodetool)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cassandra-conf", c.CassandraConf)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "keyspace", c.Keyspace)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-bucket", c.AwsBucket)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-region", c.AwsRegion)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-secret-key", c.AwsSecretKey)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-access-key", c.AwsAccessKey)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "sstableloader", c.Sstableloader)
+	str = fmt.Sprintf("%s\n}\n", str[:len(str)-1])
+	return str
 }
