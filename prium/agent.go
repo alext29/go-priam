@@ -2,7 +2,6 @@ package prium
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
@@ -10,46 +9,46 @@ import (
 	"strings"
 )
 
-// agent provides methods to run
-type agent struct {
+// Agent provides methods to run commands and interface with remote
+// cassandra cluster nodes via ssh.
+type Agent struct {
 	user       string
 	privateKey string
 	clients    map[string]*ssh.Client
 }
 
-// newAgent ...
-func newAgent(config *Config) *agent {
-	return &agent{
+// NewAgent returns a new Agent.
+func NewAgent(config *Config) *Agent {
+	return &Agent{
 		user:       *config.user,
 		privateKey: *config.privateKey,
 		clients:    make(map[string]*ssh.Client),
 	}
 }
 
-var (
-	sshOpts = []string{
-		"-o", "PasswordAuthentication=no",
-		"-o", "CheckHostIP=no",
-		"-o", "ChallengeResponseAuthentication=no",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "KbdInteractiveAuthentication=no",
-		"-o", "BatchMode=yes",
-	}
-)
+// scpOpts are options provided for copying files to remote files via scp.
+var scpOpts = []string{
+	"-o", "PasswordAuthentication=no",
+	"-o", "CheckHostIP=no",
+	"-o", "ChallengeResponseAuthentication=no",
+	"-o", "StrictHostKeyChecking=no",
+	"-o", "KbdInteractiveAuthentication=no",
+	"-o", "BatchMode=yes",
+}
 
-// uploadFile uploads a file from local machine to remote machine.
-func (a *agent) uploadFile(host, localPath, remotePath string) error {
+// UploadFile from local machine to remote host.
+func (a *Agent) UploadFile(host, localFile, remotePath string) error {
 
 	// create remote dir
-	_, err := a.run(host, fmt.Sprintf("mkdir -p %s", remotePath))
+	_, err := a.Run(host, fmt.Sprintf("mkdir -p %s", remotePath))
 	if err != nil {
 		return errors.Wrap(err, "could not create remote directory")
 	}
 
 	// copy file
 	cmd := exec.Command("scp")
-	cmd.Args = append(cmd.Args, sshOpts...)
-	cmd.Args = append(cmd.Args, localPath)
+	cmd.Args = append(cmd.Args, scpOpts...)
+	cmd.Args = append(cmd.Args, localFile)
 	dst := fmt.Sprintf("%s@%s:%s", a.user, host, remotePath)
 	cmd.Args = append(cmd.Args, dst)
 	if _, err := cmd.CombinedOutput(); err != nil {
@@ -58,61 +57,58 @@ func (a *agent) uploadFile(host, localPath, remotePath string) error {
 	return nil
 }
 
-// list all directories in given directory
-func (a *agent) listDirs(host, dir string) ([]string, error) {
-	return a.list(host, dir, "d")
+// ListDirs on remote host in given directory.
+func (a *Agent) ListDirs(host, dir string) ([]string, error) {
+	return a.List(host, dir, "d")
 }
 
-// list all files in directory
-func (a *agent) listFiles(host, dir string) ([]string, error) {
-	return a.list(host, dir, "f")
+// ListFiles on remote host in given directory.
+func (a *Agent) ListFiles(host, dir string) ([]string, error) {
+	return a.List(host, dir, "f")
 }
 
-// list files of given type in directory
-func (a *agent) list(host, dir, t string) ([]string, error) {
-	bytes, err := a.run(host, fmt.Sprintf("find %s -maxdepth 1 -type %s", dir, t))
+// List files of given type in directory on remote host. Does not run recursive.
+func (a *Agent) List(host, dir, t string) ([]string, error) {
+	bytes, err := a.Run(host, fmt.Sprintf("find %s -maxdepth 1 -type %s", dir, t))
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("error listing dir %s on host %s", dir, host))
 	}
 	return strings.Split(string(bytes), "\n"), nil
 }
 
-func (a *agent) readFile(host, file string) ([]byte, error) {
-	return a.run(host, fmt.Sprintf("cat %s", file))
+// ReadFile from remote machine and return bytes.
+func (a *Agent) ReadFile(host, file string) ([]byte, error) {
+	return a.Run(host, fmt.Sprintf("cat %s", file))
 }
 
-// run runs command on host and returns combined stderr and stdout output.
-func (a *agent) run(host, cmd string) ([]byte, error) {
+// Run command on remote host and return combined stderr and stdout outputs.
+func (a *Agent) Run(host, cmd string) ([]byte, error) {
 	s, err := a.session(host)
 	if err != nil {
-		glog.Errorf("error establishing session to host %s :: %v", host, err)
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("error establishing ssh session to host %s", host))
 	}
 	return s.CombinedOutput(cmd)
 }
 
 // session creates a new ssh session to host.
-func (a *agent) session(host string) (*ssh.Session, error) {
+func (a *Agent) session(host string) (*ssh.Session, error) {
 
 	client, err := a.client(host)
 	if err != nil {
-		glog.Error("did not get ssh client")
-		return nil, fmt.Errorf("did not get ssh client")
+		return nil, errors.Wrap(err, fmt.Sprintf("host: %s", host))
 	}
 
 	session, err := client.NewSession()
 	if err != nil {
-		fmt.Printf("error creating new session :: %v", err)
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("host: %s", host))
 	}
 	return session, nil
 }
 
 // client creates ssh client to host if one does not already exists.
-func (a *agent) client(host string) (*ssh.Client, error) {
+func (a *Agent) client(host string) (*ssh.Client, error) {
 
 	if host == "" {
-		glog.Error("empty cassandra host")
 		return nil, fmt.Errorf("empty cassandra host")
 	}
 
@@ -120,18 +116,14 @@ func (a *agent) client(host string) (*ssh.Client, error) {
 		return session, nil
 	}
 
-	glog.V(2).Infof("using private key: %s", a.privateKey)
-	glog.V(2).Infof("user: %s", a.user)
 	key, err := ioutil.ReadFile(a.privateKey)
 	if err != nil {
-		glog.Errorf("error reading private key %s :: %v", a.privateKey, err)
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("error reading private key %s", a.privateKey))
 	}
 
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		glog.Errorf("error parsing private key :: %v", err)
-		return nil, err
+		return nil, errors.Wrap(err, "error parsing private key")
 	}
 
 	// ssh client config
@@ -144,10 +136,8 @@ func (a *agent) client(host string) (*ssh.Client, error) {
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), clientConfig)
 	if err != nil {
-		glog.Errorf("error connecting to host %s :: %v", host, err)
-		return nil, err
+		return nil, errors.Wrap(err, "error connecting to host")
 	}
-
 	a.clients[host] = client
 	return client, nil
 }

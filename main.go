@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/alext29/go-prium/prium"
 	"github.com/golang/glog"
+	"os"
 )
 
 func main() {
@@ -23,19 +24,8 @@ func main() {
 		return
 	}
 
-	// get cassandra object
-	cassandra := prium.NewCassandra(config)
-	if err := cassandra.Init(); err != nil {
-		glog.Errorf("error initializing connection to cassandra :: %v\n", err)
-		return
-	}
-
-	// get s3 object
-	s3 := prium.NewS3(config)
-	if err := s3.Init(); err != nil {
-		glog.Errorf("error initializing s3 :: %v\n", err)
-		return
-	}
+	p := prium.New(config)
+	p.Init()
 
 	// get command
 	cmd := flag.Arg(0)
@@ -43,21 +33,25 @@ func main() {
 
 	switch cmd {
 	case "backup":
-		if err := prium.Backup(config, cassandra, s3); err != nil {
+		if err := p.Backup(); err != nil {
 			glog.Errorf("%v", err)
-		} else {
-			glog.Infof("backup completed")
+			os.Exit(1)
 		}
+		glog.Infof("backup completed")
 	case "restore":
-		if err := prium.Restore(config, cassandra, s3); err != nil {
+		if err := p.Restore(); err != nil {
 			glog.Errorf("%v", err)
-		} else {
-			glog.Infof("restore completed")
+			os.Exit(1)
 		}
+		glog.Infof("restore completed")
 	case "":
 		glog.Errorf("did not get valid command")
+		printUsage()
+		os.Exit(1)
 	default:
 		glog.Errorf("unrecognized command '%s'", cmd)
+		printUsage()
+		os.Exit(1)
 	}
 }
 

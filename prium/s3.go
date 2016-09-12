@@ -14,24 +14,26 @@ import (
 	"io"
 	"os"
 	"path"
-	"sort"
 	"strings"
 )
 
 // S3 ...
 type S3 struct {
 	config   *Config
-	agent    *agent
+	agent    *Agent
 	svc      *s3.S3
 	uploader *s3manager.Uploader
 }
 
 // NewS3 ..
-func NewS3(config *Config) *S3 {
-	return &S3{config: config}
+func NewS3(config *Config, agent *Agent) *S3 {
+	return &S3{
+		config: config,
+		agent:  agent,
+	}
 }
 
-// Init ..
+// Init S3 object.
 func (s *S3) Init() error {
 	// create new session
 	sess := session.New(&aws.Config{
@@ -40,11 +42,12 @@ func (s *S3) Init() error {
 	})
 	s.svc = s3.New(sess)
 	s.uploader = s3manager.NewUploader(sess)
-	s.agent = newAgent(s.config)
+	s.agent = NewAgent(s.config)
 	return nil
 }
 
 // UploadFiles ...
+// TODO: retry upload if initial upload fails.
 func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []string) error {
 	glog.Infof("uploading files to s3...")
 	for _, file := range files {
@@ -52,7 +55,7 @@ func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []
 		glog.Infof("upload key: %s", key)
 
 		// read bytes from file@host
-		b, err := s.agent.readFile(host, file)
+		b, err := s.agent.ReadFile(host, file)
 		if err != nil {
 			glog.Errorf("error reading file %s on host %s", file, host)
 			return err
@@ -85,6 +88,8 @@ func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []
 	return nil
 }
 
+// getFileKey creates a unique key for backup file that would be uploaded
+// to AWS S3.
 func getFileKey(environment, keyspace, parent, timestamp, host, file string, incremental bool) string {
 	dir, base := path.Split(path.Clean(file))
 	dir, _ = path.Split(path.Clean(dir))
@@ -188,63 +193,4 @@ func (s *S3) GetSnapshotHistory(env, keyspace string) (*SnapshotHistory, error) 
 		h.Add(*obj.Key)
 	}
 	return h, nil
-}
-
-// SnapshotHistory provides the history of all snapshots in S3 for a given environment and keyspace
-type SnapshotHistory struct {
-	parent map[string]string   // parent of a snapshot if incremental
-	keys   map[string][]string // list of keys for given snapshot
-}
-
-// NewSnapshotHistory  ..
-func NewSnapshotHistory() *SnapshotHistory {
-	return &SnapshotHistory{
-		parent: make(map[string]string),
-		keys:   make(map[string][]string),
-	}
-}
-
-// Add key to snapshot history
-func (h *SnapshotHistory) Add(key string) {
-	parts := strings.Split(key, "/")
-	parent := parts[2]
-	timestamp := parts[3]
-	if parent != timestamp {
-		h.parent[timestamp] = parent
-	}
-	h.keys[timestamp] = append(h.keys[timestamp], key)
-}
-
-// List returns a ordered list of timestamps.
-func (h *SnapshotHistory) List() []string {
-	var timestamps []string
-	for timestamp := range h.keys {
-		timestamps = append(timestamps, timestamp)
-	}
-	sort.Strings(timestamps)
-	return timestamps
-}
-
-// Keys returns all keys for a given snapshot including keys for
-// parent snapshots if this is an incremental backup
-func (h *SnapshotHistory) Keys(snapshot string) ([]string, error) {
-	var keys []string
-	for {
-		k, ok := h.keys[snapshot]
-		if !ok {
-			return nil, fmt.Errorf("did not find snapshot %s", snapshot)
-		}
-		keys = append(keys, k...)
-		snapshot, ok = h.parent[snapshot]
-		if !ok {
-			break
-		}
-	}
-	return keys, nil
-}
-
-// Valid returns true if this snapshot exists in history
-func (h *SnapshotHistory) Valid(snapshot string) bool {
-	_, ok := h.keys[snapshot]
-	return ok
 }

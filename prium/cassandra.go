@@ -4,36 +4,23 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 	"os"
 	"regexp"
 	"strings"
 )
 
-// Cassandra ...
+// Cassandra provides methods to interface with a Cassandra cluster.
 type Cassandra struct {
-	config      *Config
-	user        string
-	host        string
-	privateKey  string
-	nodetool    string
-	confPath    string
-	agent       *agent
-	hostClients map[string]*ssh.Client
+	config *Config
+	agent  *Agent
 }
 
-// NewCassandra ...
-func NewCassandra(config *Config) *Cassandra {
+// NewCassandra returns a new Cassandra object.
+func NewCassandra(config *Config, agent *Agent) *Cassandra {
 	return &Cassandra{
-		config:      config,
-		user:        *config.user,
-		host:        *config.host,
-		privateKey:  *config.privateKey,
-		nodetool:    *config.nodetool,
-		confPath:    *config.cassandraConf,
-		hostClients: make(map[string]*ssh.Client),
-		agent:       newAgent(config),
+		config: config,
+		agent:  agent,
 	}
 }
 
@@ -45,10 +32,10 @@ func (c *Cassandra) Init() error {
 
 // Hosts returns slice of cassandra hosts
 func (c *Cassandra) Hosts() []string {
-	cmd := fmt.Sprintf("%s status", c.nodetool)
-	bytes, err := c.agent.run(c.host, cmd)
+	cmd := fmt.Sprintf("%s status", *c.config.nodetool)
+	bytes, err := c.agent.Run(*c.config.host, cmd)
 	if err != nil {
-		glog.Errorf("error running cmd '%s' on host '%s' :: %v", cmd, c.host, err)
+		glog.Errorf("error running cmd '%s' on host '%s' :: %v", cmd, *c.config.host, err)
 		return nil
 	}
 	var hosts []string
@@ -60,7 +47,7 @@ func (c *Cassandra) Hosts() []string {
 		}
 		if m {
 			slices := ws.Split(line, 3)
-			glog.Infof("got cassandra host: %s", slices[1])
+			glog.V(2).Infof("found cassandra node: %s", slices[1])
 			hosts = append(hosts, slices[1])
 		}
 	}
@@ -77,9 +64,9 @@ func (c *Cassandra) Snapshot(host, ts, ks string) ([]string, []string, error) {
 
 // SnapshotFull takes a full snapshot.
 func (c *Cassandra) SnapshotFull(host, ts, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s snapshot -t %s %s", c.nodetool, ts, ks)
+	cmd := fmt.Sprintf("%s snapshot -t %s %s", *c.config.nodetool, ts, ks)
 	glog.V(2).Infof("snapshot command: %s", cmd)
-	bytes, err := c.agent.run(host, cmd)
+	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, fmt.Sprintf("error taking snapshot on host %s with output %s", host, bytes))
 	}
@@ -99,7 +86,7 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 	var dirs []string
 	for _, dataDir := range dataDirs {
 		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, ks)
-		tables, err := c.agent.listDirs(host, keyspaceDir)
+		tables, err := c.agent.ListDirs(host, keyspaceDir)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -111,7 +98,7 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 			//glog.Infof("got table %s", table)
 			snapshotDir := fmt.Sprintf("%s/snapshots/%s/", table, ts)
 			//glog.Infof("snapshot dir: %s", snapshotDir)
-			f, err := c.agent.listFiles(host, snapshotDir)
+			f, err := c.agent.ListFiles(host, snapshotDir)
 			if err != nil {
 				continue
 			}
@@ -131,9 +118,9 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 
 // SnapshotInc takes an incremental backup.
 func (c *Cassandra) SnapshotInc(host, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s flush  %s", c.nodetool, ks)
+	cmd := fmt.Sprintf("%s flush  %s", *c.config.nodetool, ks)
 	glog.V(2).Infof("snapshot command: %s", cmd)
-	bytes, err := c.agent.run(host, cmd)
+	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, fmt.Sprintf("error running flush on host %s with output %s", host, bytes))
 	}
@@ -152,7 +139,7 @@ func (c *Cassandra) snapshotIncFiles(host, ks string) ([]string, []string, error
 	var dirs []string
 	for _, dataDir := range dataDirs {
 		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, ks)
-		tables, err := c.agent.listDirs(host, keyspaceDir)
+		tables, err := c.agent.ListDirs(host, keyspaceDir)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -162,7 +149,7 @@ func (c *Cassandra) snapshotIncFiles(host, ks string) ([]string, []string, error
 				continue
 			}
 			snapshotDir := fmt.Sprintf("%s/backups/", table)
-			f, err := c.agent.listFiles(host, snapshotDir)
+			f, err := c.agent.ListFiles(host, snapshotDir)
 			if err != nil {
 				continue
 			}
@@ -206,7 +193,7 @@ func (c *Cassandra) hostDataDirs(host string) ([]string, error) {
 }
 
 func (c *Cassandra) hostCassandraYaml(host string) ([]byte, error) {
-	return c.agent.run(host, fmt.Sprintf("cat %s/cassandra.yaml", c.confPath))
+	return c.agent.Run(host, fmt.Sprintf("cat %s/cassandra.yaml", *c.config.cassandraConf))
 }
 
 func (c *Cassandra) deleteSnapshot(host string, dirs []string) error {
@@ -216,7 +203,7 @@ func (c *Cassandra) deleteSnapshot(host string, dirs []string) error {
 			glog.Errorf("something fishy, trying to delete dir: %s", dir)
 			os.Exit(1)
 		}
-		c.agent.run(host, fmt.Sprintf("rm -rf %s", dir))
+		c.agent.Run(host, fmt.Sprintf("rm -rf %s", dir))
 	}
 	return nil
 }
@@ -227,7 +214,7 @@ func (c *Cassandra) sstableload(target string, dirs map[string]bool) error {
 		var err error
 		for _, host := range hosts {
 			cmd := fmt.Sprintf("%s --nodes %s -v %s", *c.config.sstableloader, host, dir)
-			out, err := c.agent.run(target, cmd)
+			out, err := c.agent.Run(target, cmd)
 			glog.Infof("sstableloader output: %s", out)
 			if err == nil {
 				break
