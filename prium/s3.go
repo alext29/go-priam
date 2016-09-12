@@ -183,13 +183,19 @@ func (s *S3) SnapshotHistory() (*SnapshotHistory, error) {
 		Bucket: aws.String(s.config.AwsBucket),
 		Prefix: aws.String(prefix),
 	}
-	resp, err := s.svc.ListObjectsV2(params)
-	if err != nil {
-		return nil, errors.Wrap(err, "error listing from S3")
-	}
 	h := NewSnapshotHistory()
-	for _, obj := range resp.Contents {
-		h.Add(*obj.Key)
+	for {
+		resp, err := s.svc.ListObjectsV2(params)
+		if err != nil {
+			return nil, errors.Wrap(err, "error listing from S3")
+		}
+		for _, obj := range resp.Contents {
+			h.Add(*obj.Key)
+		}
+		if !*resp.IsTruncated {
+			break
+		}
+		params.ContinuationToken = resp.NextContinuationToken
 	}
 	return h, nil
 }
