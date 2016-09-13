@@ -49,26 +49,25 @@ func (c *Cassandra) Hosts() []string {
 }
 
 // Snapshot takes incremental or full snapshot.
-func (c *Cassandra) Snapshot(host, ts, ks string) ([]string, []string, error) {
+func (c *Cassandra) Snapshot(host, ts string) ([]string, []string, error) {
 	if c.config.Incremental {
-		return c.SnapshotInc(host, ks)
+		return c.SnapshotInc(host)
 	}
-	return c.SnapshotFull(host, ts, ks)
+	return c.SnapshotFull(host, ts)
 }
 
 // SnapshotFull takes a full snapshot.
-func (c *Cassandra) SnapshotFull(host, ts, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s snapshot -t %s %s", c.config.Nodetool, ts, ks)
-	glog.V(2).Infof("snapshot command: %s", cmd)
+func (c *Cassandra) SnapshotFull(host, ts string) ([]string, []string, error) {
+	cmd := fmt.Sprintf("%s snapshot -t %s %s", c.config.Nodetool, ts, c.config.Keyspace)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, fmt.Sprintf("error taking snapshot on host %s with output %s", host, bytes))
 	}
-	return c.snapshotFullFiles(host, ts, ks)
+	return c.snapshotFullFiles(host, ts)
 }
 
 // Get files in snapshot
-func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, error) {
+func (c *Cassandra) snapshotFullFiles(host, ts string) ([]string, []string, error) {
 
 	// download cassandra yaml files
 	dataDirs, err := c.hostDataDirs(host)
@@ -79,7 +78,7 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 	var files []string
 	var dirs []string
 	for _, dataDir := range dataDirs {
-		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, ks)
+		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, c.config.Keyspace)
 		tables, err := c.agent.ListDirs(host, keyspaceDir)
 		if err != nil {
 			return nil, nil, err
@@ -107,18 +106,17 @@ func (c *Cassandra) snapshotFullFiles(host, ts, ks string) ([]string, []string, 
 }
 
 // SnapshotInc takes an incremental backup.
-func (c *Cassandra) SnapshotInc(host, ks string) ([]string, []string, error) {
-	cmd := fmt.Sprintf("%s flush  %s", c.config.Nodetool, ks)
-	glog.V(2).Infof("snapshot command: %s", cmd)
+func (c *Cassandra) SnapshotInc(host string) ([]string, []string, error) {
+	cmd := fmt.Sprintf("%s flush  %s", c.config.Nodetool, c.config.Keyspace)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, fmt.Sprintf("error running flush on host %s with output %s", host, bytes))
 	}
-	return c.snapshotIncFiles(host, ks)
+	return c.snapshotIncFiles(host)
 }
 
 // Get files in snapshot
-func (c *Cassandra) snapshotIncFiles(host, ks string) ([]string, []string, error) {
+func (c *Cassandra) snapshotIncFiles(host string) ([]string, []string, error) {
 	// download cassandra yaml files
 	dataDirs, err := c.hostDataDirs(host)
 	if err != nil {
@@ -128,7 +126,7 @@ func (c *Cassandra) snapshotIncFiles(host, ks string) ([]string, []string, error
 	var files []string
 	var dirs []string
 	for _, dataDir := range dataDirs {
-		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, ks)
+		keyspaceDir := fmt.Sprintf("%s/%s/", dataDir, c.config.Keyspace)
 		tables, err := c.agent.ListDirs(host, keyspaceDir)
 		if err != nil {
 			return nil, nil, err

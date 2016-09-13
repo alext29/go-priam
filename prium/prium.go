@@ -80,24 +80,22 @@ func (p *Prium) Backup() error {
 	// take snapshot on each host
 	// TODO: do in parallel
 	for _, host := range hosts {
-		glog.Infof("take snapshot on cassandra host: %s", host)
+		glog.Infof("snapshot @ %s", host)
 
 		// create snapshot
-		files, dirs, err := p.cassandra.Snapshot(host, timestamp, p.config.Keyspace)
+		files, dirs, err := p.cassandra.Snapshot(host, timestamp)
 		if err != nil {
-			glog.Errorf("error taking snapshot on host %s :: %v", host, err)
-			continue
+			return errors.Wrap(err, fmt.Sprintf("snapshot @ %s", host))
 		}
 
 		// upload files to s3
-		if err = p.s3.UploadFiles(p.config.AwsBasePath, p.config.Keyspace, parent, timestamp, host, files); err != nil {
-			glog.Errorf("error uploading files from host %s :: %v", host, err)
+		if err = p.s3.UploadFiles(parent, timestamp, host, files); err != nil {
+			return errors.Wrap(err, fmt.Sprintf("upload @ %s", host))
 		}
 
 		// delete local files
 		if err = p.cassandra.deleteSnapshot(host, dirs); err != nil {
-			glog.Errorf("error deleting snapshot on host %s :: %v", host, err)
-			continue
+			return errors.Wrap(err, fmt.Sprintf("delete @ %s", host))
 		}
 	}
 	return nil

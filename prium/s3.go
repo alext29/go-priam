@@ -1,7 +1,6 @@
 package prium
 
 import (
-	"bytes"
 	"compress/gzip"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -42,24 +41,23 @@ func NewS3(config *Config, agent *Agent) *S3 {
 
 // UploadFiles uploads a list of files to AWS S3.
 // TODO: retry upload if initial upload fails.
-func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []string) error {
+func (s *S3) UploadFiles(parent, timestamp, host string, files []string) error {
 	glog.Infof("uploading files to s3...")
 	for _, file := range files {
-		key := getFileKey(env, keyspace, parent, timestamp, host, file, s.config.Incremental)
+		key := s.getFileKey(parent, timestamp, host, file)
 		glog.Infof("upload key: %s", key)
 
 		// read bytes from file@host
-		b, err := s.agent.ReadFile(host, file)
+		r, err := s.agent.ReadFile(host, file)
 		if err != nil {
-			glog.Errorf("error reading file %s on host %s", file, host)
-			return err
+			return errors.Wrap(err, fmt.Sprintf("read %s:%s", host, file))
 		}
 
 		// gzip files before uploading
 		reader, writer := io.Pipe()
 		go func() {
 			gw := gzip.NewWriter(writer)
-			r := bytes.NewReader(b)
+			//r := bytes.NewReader(b)
 			io.Copy(gw, r)
 			gw.Close()
 			writer.Close()
@@ -75,8 +73,7 @@ func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []
 		// upload file
 		_, err = s.uploader.Upload(params)
 		if err != nil {
-			glog.Errorf("error uploading file to S3 :: %v", err)
-			//return errors.Wrap(err, "error uploading file to S3")
+			return errors.Wrap(err, fmt.Sprintf("upload %s:%s", host, file))
 		}
 	}
 	return nil
@@ -84,14 +81,14 @@ func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []
 
 // getFileKey creates a unique key for backup file that would be uploaded
 // to AWS S3.
-func getFileKey(environment, keyspace, parent, timestamp, host, file string, incremental bool) string {
+func (s *S3) getFileKey(parent, timestamp, host, file string) string {
 	dir, base := path.Split(path.Clean(file))
 	dir, _ = path.Split(path.Clean(dir))
-	if !incremental {
+	if !s.config.Incremental {
 		dir, _ = path.Split(path.Clean(dir))
 	}
 	return fmt.Sprintf("/%s/%s/%s/%s/%s%s%s.gz",
-		environment, keyspace, parent, timestamp, host, dir, base)
+		s.config.AwsBasePath, s.config.Keyspace, parent, timestamp, host, dir, base)
 }
 
 // downloadKeys downloads a list of keys from S3 to local machine.
@@ -101,7 +98,7 @@ func (s *S3) downloadKeys(keys []string, prefix string) (map[string]string, erro
 	for _, key := range keys {
 		file, err := s.downloadKey(key, prefix)
 		if err != nil {
-			return nil, errors.Wrap(err, "error downloading key")
+			return nil, errors.Wrap(err, fmt.Sprintf("download %s", key))
 		}
 		files[key] = file
 	}

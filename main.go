@@ -68,7 +68,8 @@ COMMAND
 	history         Shows tree of all backups, including incremental backups.
 
 OPTIONS
-	-incremental            Take incremental backup.
+
+	-incremental            Switch to indicate incremental backup.
 	-aws-access-key         AWS Access Key ID to access S3.
 	-aws-base-path          Base path to copy/restore files from S3.
 	-aws-bucket             S3 bucket name to store backups.

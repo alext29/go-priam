@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
+	"io"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 // Agent provides methods to run commands and interface with remote
 // cassandra cluster nodes via ssh.
+// TODO: add mutex to agent operations, to enable multi thread.
 type Agent struct {
 	user       string
 	privateKey string
@@ -78,15 +80,29 @@ func (a *Agent) List(host, dir, t string) ([]string, error) {
 }
 
 // ReadFile from remote machine and return bytes.
-func (a *Agent) ReadFile(host, file string) ([]byte, error) {
-	return a.Run(host, fmt.Sprintf("cat %s", file))
+func (a *Agent) ReadFile(host, file string) (io.Reader, error) {
+
+	s, err := a.session(host)
+	if err != nil {
+		return nil, errors.Wrap(err, "ssh session failed")
+	}
+	cmd := fmt.Sprintf("cat %s", file)
+	out, err := s.StdoutPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "stdout pipe")
+	}
+	err = s.Start(cmd)
+	if err != nil {
+		return nil, errors.Wrap(err, "start")
+	}
+	return out, nil
 }
 
 // Run command on remote host and return combined stderr and stdout outputs.
 func (a *Agent) Run(host, cmd string) ([]byte, error) {
 	s, err := a.session(host)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("error establishing ssh session to host %s", host))
+		return nil, errors.Wrap(err, "ssh session failed")
 	}
 	glog.V(2).Infof("run@%s: %s", host, cmd)
 	return s.CombinedOutput(cmd)
