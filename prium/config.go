@@ -36,7 +36,7 @@ type Config struct {
 func NewConfig() (*Config, error) {
 
 	// get default config
-	config, err := defaultConfig()
+	config, err := DefaultConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting default config")
 	}
@@ -54,8 +54,8 @@ func NewConfig() (*Config, error) {
 	return config, nil
 }
 
-// defaultConfig provides a starting point config for prium.
-func defaultConfig() (*Config, error) {
+// DefaultConfig provides a starting point config for prium.
+func DefaultConfig() (*Config, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting current user")
@@ -96,14 +96,11 @@ func (c *Config) parseFile(confFile string) error {
 		return nil
 	}
 
-	fmt.Printf("got conf file: %s\n", confFile)
-
 	if _, err := os.Stat(confFile); os.IsNotExist(err) {
 		return nil
 	}
 
 	fmt.Printf("reading conf file: %s\n", confFile)
-
 	bytes, err := ioutil.ReadFile(confFile)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error reading conf file %s", confFile))
