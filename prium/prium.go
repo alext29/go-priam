@@ -77,6 +77,11 @@ func (p *Prium) Backup() error {
 	}
 	glog.Infof("timestamp of parent snapshot: %s", parent)
 
+	// perform schema backup
+	if err := p.schemaBackup(parent, timestamp, hosts[0]); err != nil {
+		return errors.Wrap(err, "schema backup failed")
+	}
+
 	// take snapshot on each host
 	// TODO: do in parallel
 	for _, host := range hosts {
@@ -98,6 +103,25 @@ func (p *Prium) Backup() error {
 			return errors.Wrap(err, fmt.Sprintf("delete @ %s", host))
 		}
 	}
+	return nil
+}
+
+func (p *Prium) schemaBackup(parent, timestamp, host string) error {
+
+	// get schema backup
+	schemaFile, err := p.cassandra.SchemaBackup(host)
+	if err != nil {
+		return errors.Wrap(err, "schema backup")
+	}
+	glog.Infof("schema file is : %s", schemaFile)
+
+	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz", p.config.AwsBasePath, p.config.Keyspace, parent, timestamp, p.config.Keyspace)
+
+	// upload files to s3
+	if err = p.s3.UploadFile(host, schemaFile, key); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("upload @ %s", host))
+	}
+
 	return nil
 }
 

@@ -19,6 +19,7 @@ type Config struct {
 	AwsRegion     string `yaml:"aws-region"`
 	AwsSecretKey  string `yaml:"aws-secret-key"`
 	CassandraConf string `yaml:"cassandra-conf"`
+	CqlshPath     string `yaml:"cqlsh-path"`
 	Host          string
 	Incremental   bool
 	Keyspace      string
@@ -64,6 +65,7 @@ func DefaultConfig() (*Config, error) {
 		AwsBasePath:   "go-prium-test",
 		AwsRegion:     "us-east-1",
 		CassandraConf: "/etc/cassandra",
+		CqlshPath:     "/usr/local/bin/cqlsh",
 		Nodetool:      "/usr/bin/nodetool",
 		PrivateKey:    path.Join(usr.HomeDir, ".ssh", "id_rsa"),
 		Sstableloader: "/usr/bin/sstableloader",
@@ -122,6 +124,7 @@ func (c *Config) parseFlags() error {
 	flag.StringVar(&c.AwsRegion, "aws-region", c.AwsRegion, "region of s3 account")
 	flag.StringVar(&c.AwsSecretKey, "aws-secret-key", c.AwsSecretKey, "AWS Secret Access key to access S3")
 	flag.StringVar(&c.CassandraConf, "cassandra-conf", c.CassandraConf, "directory where cassandra conf files are placed")
+	flag.StringVar(&c.CqlshPath, "cqlsh-path", c.CqlshPath, "path to cqlsh")
 	flag.StringVar(&c.Host, "host", c.Host, "ip address of any one of the cassandra hosts")
 	flag.StringVar(&c.Keyspace, "keyspace", c.Keyspace, "cassandra keyspace to backup")
 	flag.StringVar(&c.Nodetool, "nodetool-path", c.Nodetool, "path to nodetool on the cassandra host")

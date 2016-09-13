@@ -48,6 +48,17 @@ func (c *Cassandra) Hosts() []string {
 	return hosts
 }
 
+// SchemaBackup takes backup of a keyspace and saves it on remote machine
+func (c *Cassandra) SchemaBackup(host string) (string, error) {
+	file := fmt.Sprintf("/tmp/temp.schema")
+	cmd := fmt.Sprintf("echo 'DESCRIBE KEYSPACE %s' | %s > %s", c.config.Keyspace, c.config.CqlshPath, file)
+	_, err := c.agent.Run(host, cmd)
+	if err != nil {
+		return "", err
+	}
+	return file, nil
+}
+
 // Snapshot takes incremental or full snapshot.
 func (c *Cassandra) Snapshot(host, ts string) ([]string, []string, error) {
 	if c.config.Incremental {

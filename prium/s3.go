@@ -40,41 +40,47 @@ func NewS3(config *Config, agent *Agent) *S3 {
 }
 
 // UploadFiles uploads a list of files to AWS S3.
-// TODO: retry upload if initial upload fails.
 func (s *S3) UploadFiles(parent, timestamp, host string, files []string) error {
 	glog.Infof("uploading files to s3...")
 	for _, file := range files {
 		key := s.getFileKey(parent, timestamp, host, file)
-		glog.Infof("upload key: %s", key)
-
-		// read bytes from file@host
-		r, err := s.agent.ReadFile(host, file)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("read %s:%s", host, file))
+		if err := s.UploadFile(host, file, key); err != nil {
+			return err
 		}
+	}
+	return nil
+}
 
-		// gzip files before uploading
-		reader, writer := io.Pipe()
-		go func() {
-			gw := gzip.NewWriter(writer)
-			//r := bytes.NewReader(b)
-			io.Copy(gw, r)
-			gw.Close()
-			writer.Close()
-		}()
+// UploadFile uploads a file to AWS S3.
+func (s *S3) UploadFile(host, file, key string) error {
+	glog.Infof("upload key: %s", key)
 
-		// details of file to upload
-		params := &s3manager.UploadInput{
-			Bucket: aws.String(s.config.AwsBucket),
-			Body:   reader,
-			Key:    aws.String(key),
-		}
+	// read bytes from file@host
+	r, err := s.agent.ReadFile(host, file)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("read %s:%s", host, file))
+	}
 
-		// upload file
-		_, err = s.uploader.Upload(params)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("upload %s:%s", host, file))
-		}
+	// gzip files before uploading
+	reader, writer := io.Pipe()
+	go func() {
+		gw := gzip.NewWriter(writer)
+		io.Copy(gw, r)
+		gw.Close()
+		writer.Close()
+	}()
+
+	// details of file to upload
+	params := &s3manager.UploadInput{
+		Bucket: aws.String(s.config.AwsBucket),
+		Body:   reader,
+		Key:    aws.String(key),
+	}
+
+	// upload file
+	_, err = s.uploader.Upload(params)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("upload %s:%s", host, file))
 	}
 	return nil
 }
