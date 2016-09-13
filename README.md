@@ -35,9 +35,9 @@ Incremental backup uploads only the additional files needed for backup, and link
 When restoring to an incremental backup, all necessary files till the last full backup are downloaded and restored from. Timestamp is assumed to be monotonically increasing else the code would barf while take backup.
 
 ### History of backups:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> history
+`go-prium [OPTIONS] -keyspace <KEYSPACE> history`
 
-Prints out timestamp of all existing backup, including incremental backups.
+Prints out timestamps of all existing backups, including incremental backups, in a tree form.
 
 ## Configuration parameters
 `go-prium help`  gives a complete list of all command line parameters.
