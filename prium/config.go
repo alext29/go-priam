@@ -139,7 +139,7 @@ func (c *Config) parseFlags() error {
 func (c *Config) validateConfig() error {
 	switch {
 	case c.AwsAccessKey == "":
-		return fmt.Errorf("please provide AWS Access Key ID via")
+		return fmt.Errorf("please provide AWS Access Key ID")
 	case c.AwsSecretKey == "":
 		return fmt.Errorf("please provide AWS Secret Access key")
 	case c.AwsBucket == "":

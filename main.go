@@ -64,25 +64,25 @@ USAGE: go-prium [OPTIONS] COMMAND
 
 COMMAND
 
-	backup		Backup cassandra DB to AWS S3 bucket.
-	restore 	Restore from a previous backup.
-	history		Shows tree of all backups, including incremental backups.
+	backup          Backup cassandra DB to AWS S3 bucket.
+	restore         Restore from a previous backup.
+	history         Shows tree of all backups, including incremental backups.
 
 OPTIONS
-	-incremental		Take incremental backup.
-	-aws-access-key		AWS Access Key ID to access S3.
-	-aws-base-path		Base path to copy/restore files from S3.
-	-aws-bucket		S3 bucket name to store backups.
-	-aws-region		Region of S3 account.
-	-aws-secret-key		AWS Secret Access key to access S3.
-	-cassandra-conf		Directory where cassandra conf files are placed.
-	-host			IP address of any one of the cassandra nodes.
-	-keyspace		Cassandra keyspace to backup.
-	-nodetool-path		Path to nodetool on the cassandra host.
-	-private-key		Path to private key used for password less ssh.
-	-snapshot		Restore to this timestamp.
-	-sstableloader		Path to sstableloader on cassandra hosts.
-	-temp-dir		Temporary directory to download files to.
-	-user			Usename for password less ssh to cassandra host.
+	-incremental            Take incremental backup.
+	-aws-access-key         AWS Access Key ID to access S3.
+	-aws-base-path          Base path to copy/restore files from S3.
+	-aws-bucket             S3 bucket name to store backups.
+	-aws-region             Region of S3 account.
+	-aws-secret-key         AWS Secret Access key to access S3.
+	-cassandra-conf         Directory where cassandra conf files are placed.
+	-host                   IP address of any one of the cassandra nodes.
+	-keyspace               Cassandra keyspace to backup.
+	-nodetool-path          Path to nodetool on the cassandra host.
+	-private-key            Path to private key used for password less ssh.
+	-snapshot               Restore to this timestamp.
+	-sstableloader          Path to sstableloader on cassandra hosts.
+	-temp-dir               Temporary directory to download files to.
+	-user                   Usename for password less ssh to cassandra host.
 `)
 }
