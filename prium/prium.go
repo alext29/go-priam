@@ -28,19 +28,6 @@ func New(config *Config) *Prium {
 	}
 }
 
-// Init initializes individual components of Prium object.
-func (p *Prium) Init() error {
-
-	if err := p.cassandra.Init(); err != nil {
-		return errors.Wrap(err, "failed cassandra init")
-	}
-
-	if err := p.s3.Init(); err != nil {
-		return errors.Wrap(err, "failed s3 init")
-	}
-	return nil
-}
-
 // History prints the current list of backups in S3.
 func (p *Prium) History() error {
 

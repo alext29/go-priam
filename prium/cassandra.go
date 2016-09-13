@@ -24,12 +24,6 @@ func NewCassandra(config *Config, agent *Agent) *Cassandra {
 	}
 }
 
-// Init ...
-func (c *Cassandra) Init() error {
-	glog.Warningf("cassandra init not implemented...\n")
-	return nil
-}
-
 // Hosts returns slice of cassandra hosts
 func (c *Cassandra) Hosts() []string {
 	cmd := fmt.Sprintf("%s status", c.config.Nodetool)

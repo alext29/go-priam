@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-// S3 ...
+// S3 object interfaces with AWS S3.
 type S3 struct {
 	config   *Config
 	agent    *Agent
@@ -25,28 +25,22 @@ type S3 struct {
 	uploader *s3manager.Uploader
 }
 
-// NewS3 ..
+// NewS3 creates a new S3 object to interface with AWS S3.
 func NewS3(config *Config, agent *Agent) *S3 {
+	// create new session
+	sess := session.New(&aws.Config{
+		Region:      aws.String(config.AwsRegion),
+		Credentials: credentials.NewStaticCredentials(config.AwsAccessKey, config.AwsSecretKey, ""),
+	})
 	return &S3{
-		config: config,
-		agent:  agent,
+		config:   config,
+		agent:    agent,
+		svc:      s3.New(sess),
+		uploader: s3manager.NewUploader(sess),
 	}
 }
 
-// Init S3 object.
-func (s *S3) Init() error {
-	// create new session
-	sess := session.New(&aws.Config{
-		Region:      aws.String(s.config.AwsRegion),
-		Credentials: credentials.NewStaticCredentials(s.config.AwsAccessKey, s.config.AwsSecretKey, ""),
-	})
-	s.svc = s3.New(sess)
-	s.uploader = s3manager.NewUploader(sess)
-	s.agent = NewAgent(s.config)
-	return nil
-}
-
-// UploadFiles ...
+// UploadFiles uploads a list of files to AWS S3.
 // TODO: retry upload if initial upload fails.
 func (s *S3) UploadFiles(env, keyspace, parent, timestamp, host string, files []string) error {
 	glog.Infof("uploading files to s3...")

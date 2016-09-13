@@ -28,7 +28,6 @@ func main() {
 
 	// create prium object
 	p := prium.New(config)
-	p.Init()
 
 	// parse and run command
 	cmd := flag.Arg(0)
