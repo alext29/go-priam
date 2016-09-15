@@ -76,6 +76,7 @@ OPTIONS
 	-aws-region             Region of S3 account.
 	-aws-secret-key         AWS Secret Access key to access S3.
 	-cassandra-conf         Directory where cassandra conf files are placed.
+	-cqlsh-path             Path fo cqlsh.
 	-host                   IP address of any one of the cassandra nodes.
 	-keyspace               Cassandra keyspace to backup.
 	-nodetool-path          Path to nodetool on the cassandra host.

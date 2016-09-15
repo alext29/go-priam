@@ -172,6 +172,7 @@ func (c *Config) String() string {
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-region", c.AwsRegion)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-secret-key", c.AwsSecretKey)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cassandra-conf", c.CassandraConf)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cqlsh-path", c.CqlshPath)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "host", c.Host)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "keyspace", c.Keyspace)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "nodetool", c.Nodetool)

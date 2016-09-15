@@ -18,6 +18,10 @@ Before you begin there is a little bit of housekeeping to do.
  * For restoring from backup, sstableloader requires access to all cassandra nodes via local subnet on port 9042. You may need to set up port-forwarding using `ssh -fNT -L` if needed.
  * Make sure incremental_backups is set to true in cassandra.yaml file (restart cassandra after changing config file). If this is not set incremental backup would not do anything.
 
+## Backup
+
+Backup operation generates timestamps based on current time. The code would barf if monotonicity of backup timestamps cannot be maintained.
+
 ### Full Backup:
 `go-prium [OPTIONS] -keyspace <KEYSPACE> backup`
 
@@ -26,18 +30,22 @@ Before you begin there is a little bit of housekeeping to do.
 
 Incremental backup uploads only the additional files needed for backup, and links to the last backup taken.
 
-### Restore to last backup:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> restore`
-
-### Restore to specific timestamp:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> -timestamp <TIMESTAMP> restore`
-
-When restoring to an incremental backup, all necessary files till the last full backup are downloaded and restored from. Timestamp is assumed to be monotonically increasing else the code would barf while take backup.
-
-### History of backups:
+### List backups:
 `go-prium [OPTIONS] -keyspace <KEYSPACE> history`
 
 Prints out timestamps of all existing backups, including incremental backups, in a tree form.
+
+## Restore
+
+*Restore operation will delete all existing data in given keyspace and restore to given timestamp.* Any data between added to the DB between backup and restore time would be lost.
+
+### Restoring to last backup:
+`go-prium [OPTIONS] -keyspace <KEYSPACE> restore`
+
+### Restoring to specific timestamp:
+`go-prium [OPTIONS] -keyspace <KEYSPACE> -timestamp <TIMESTAMP> restore`
+
+When restoring to an incremental backup, all necessary files till the last full backup are downloaded and restored from. Timestamp is assumed to be monotonically increasing else the code would barf while take backup.
 
 ## Configuration parameters
 `go-prium help`  gives a complete list of all command line parameters.
@@ -50,6 +58,7 @@ Prints out timestamps of all existing backups, including incremental backups, in
 	-aws-region             Region of s3 account.
 	-aws-secret-key         AWS Secret Access key to access S3.
 	-cassandra-conf         Directory where cassandra conf files are placed.
+	-cqlsh-path             Path to cqlsh.
 	-host                   IP address of any one of the cassandra nodes.
 	-keyspace               Cassandra keyspace to backup.
 	-nodetool-path          Path to nodetool on the cassandra host.
