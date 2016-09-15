@@ -86,16 +86,16 @@ func (a *Agent) ReadFile(host, file string) (io.Reader, error) {
 
 	s, err := a.session(host)
 	if err != nil {
-		return nil, errors.Wrap(err, "ssh session failed")
+		return nil, errors.Wrap(err, "error getting ssh session")
 	}
 	cmd := fmt.Sprintf("cat %s", file)
 	out, err := s.StdoutPipe()
 	if err != nil {
-		return nil, errors.Wrap(err, "stdout pipe")
+		return nil, errors.Wrap(err, "error getting stdout pipe")
 	}
 	err = s.Start(cmd)
 	if err != nil {
-		return nil, errors.Wrap(err, "start")
+		return nil, errors.Wrap(err, "error reading file")
 	}
 	return out, nil
 }

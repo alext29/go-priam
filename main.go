@@ -17,11 +17,11 @@ func main() {
 		printUsage()
 		return
 	}
-	glog.Infof("prium config %s", config)
+	glog.V(2).Infof("prium config %s", config)
 
-	// make sure we have a valid command
+	// make sure we have a command
 	if len(flag.Args()) == 0 {
-		glog.Error("please provide valid command")
+		glog.Error("no valid command")
 		printUsage()
 		os.Exit(1)
 	}
@@ -30,8 +30,7 @@ func main() {
 	p := prium.New(config)
 
 	// parse and run command
-	cmd := flag.Arg(0)
-	switch cmd {
+	switch flag.Arg(0) {
 	case "backup":
 		if err := p.Backup(); err != nil {
 			glog.Error(err)
@@ -50,11 +49,10 @@ func main() {
 			os.Exit(1)
 		}
 	default:
-		glog.Errorf("unrecognized command '%s'", cmd)
+		glog.Errorf("unrecognized command '%s'", flag.Arg(0))
 		printUsage()
 		os.Exit(1)
 	}
-
 }
 
 func printUsage() {

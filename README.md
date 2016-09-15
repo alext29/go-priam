@@ -37,7 +37,7 @@ Prints out timestamps of all existing backups, including incremental backups, in
 
 ## Restore
 
-*Restore operation will delete all existing data in given keyspace and restore to given timestamp.* Any data between added to the DB between backup and restore time would be lost.
+**Restore operation will delete all existing data in given keyspace and restore to given timestamp.** Any data between added to the DB between backup and restore time would be lost.
 
 ### Restoring to last backup:
 `go-prium [OPTIONS] -keyspace <KEYSPACE> restore`

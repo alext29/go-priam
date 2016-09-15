@@ -6,13 +6,14 @@ import (
 	"strings"
 )
 
-// SnapshotHistory provides the history of all snapshots in S3 for a given environment and keyspace
+// SnapshotHistory provides the history of all snapshots in S3 for a keyspace.
+// parent is set only for incremental backups.
 type SnapshotHistory struct {
 	parent map[string]string   // parent of a snapshot if incremental
 	keys   map[string][]string // list of keys for given snapshot
 }
 
-// NewSnapshotHistory  ..
+// NewSnapshotHistory initializes new snapshot history.
 func NewSnapshotHistory() *SnapshotHistory {
 	return &SnapshotHistory{
 		parent: make(map[string]string),
@@ -20,7 +21,7 @@ func NewSnapshotHistory() *SnapshotHistory {
 	}
 }
 
-// Add key to snapshot history
+// Add key to snapshot history.
 func (h *SnapshotHistory) Add(key string) {
 	parts := strings.Split(key, "/")
 	parent := parts[2]
@@ -42,7 +43,7 @@ func (h *SnapshotHistory) List() []string {
 }
 
 // Keys returns all keys for a given snapshot including keys for
-// parent snapshots if this is an incremental backup
+// parent snapshots if this is an incremental backup.
 func (h *SnapshotHistory) Keys(snapshot string) ([]string, error) {
 	var keys []string
 	for {
@@ -59,13 +60,13 @@ func (h *SnapshotHistory) Keys(snapshot string) ([]string, error) {
 	return keys, nil
 }
 
-// Valid returns true if this snapshot exists in history
+// Valid returns true if a valid snapshot.
 func (h *SnapshotHistory) Valid(snapshot string) bool {
 	_, ok := h.keys[snapshot]
 	return ok
 }
 
-// Parent returns parent for this snapshot
+// Parent returns parent for this snapshot, returns itself if not incremental.
 func (h *SnapshotHistory) Parent(snapshot string) string {
 	if parent, ok := h.parent[snapshot]; ok {
 		return parent

@@ -36,7 +36,7 @@ func (p *Prium) History() error {
 	if err := p.SnapshotHistory(); err != nil {
 		return errors.Wrap(err, "error getting snapshot history")
 	}
-	glog.Infof("current backups:\n%s", p.hist)
+	fmt.Printf("backup list:\n%s", p.hist)
 	return nil
 }
 

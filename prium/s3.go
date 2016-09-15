@@ -149,8 +149,7 @@ func (s *S3) downloadKey(key, prefix string) (string, error) {
 		writer.Close()
 	}()
 
-	var buf []byte
-	buf = make([]byte, 1024)
+	buf := make([]byte, 1024)
 	for {
 		n, err := reader.Read(buf)
 		if err != nil && err != io.EOF {
@@ -162,13 +161,10 @@ func (s *S3) downloadKey(key, prefix string) (string, error) {
 		if _, writeErr := file.Write(buf[:n]); writeErr != nil {
 			return "", errors.Wrap(err, "error writing file")
 		}
-		if err == io.EOF {
-			break
-		}
 	}
 
 	if err = reader.Close(); err != nil {
-		return "", errors.Wrap(err, "error reading downloaded file")
+		return "", errors.Wrap(err, "error closing reader")
 	}
 	if err = file.Close(); err != nil {
 		return "", errors.Wrap(err, "error closing file")
