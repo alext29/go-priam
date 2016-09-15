@@ -65,6 +65,14 @@ func (h *SnapshotHistory) Valid(snapshot string) bool {
 	return ok
 }
 
+// Parent returns parent for this snapshot
+func (h *SnapshotHistory) Parent(snapshot string) string {
+	if parent, ok := h.parent[snapshot]; ok {
+		return parent
+	}
+	return snapshot
+}
+
 // String representation of snapshot history.
 func (h *SnapshotHistory) String() string {
 

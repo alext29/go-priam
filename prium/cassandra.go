@@ -214,7 +214,6 @@ func (c *Cassandra) sstableload(target string, dirs map[string]bool) error {
 		var err error
 		for _, host := range hosts {
 			cmd := fmt.Sprintf("%s --nodes %s -v %s", c.config.Sstableloader, host, dir)
-			glog.V(2).Infof("RUN: %s", cmd)
 			out, err := c.agent.Run(target, cmd)
 			glog.V(2).Infof("sstableloader output: %s", out)
 			if err == nil {

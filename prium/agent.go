@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -72,6 +73,7 @@ func (a *Agent) ListFiles(host, dir string) ([]string, error) {
 
 // List files of given type in directory on remote host. Does not run recursive.
 func (a *Agent) List(host, dir, t string) ([]string, error) {
+	dir = path.Clean(dir)
 	bytes, err := a.Run(host, fmt.Sprintf("find %s -maxdepth 1 -type %s", dir, t))
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("error listing dir %s on host %s", dir, host))

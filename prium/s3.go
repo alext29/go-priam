@@ -78,7 +78,10 @@ func (s *S3) UploadFile(host, file, key string) error {
 	}
 
 	// upload file
-	_, err = s.uploader.Upload(params)
+	_, err = s.uploader.Upload(params, func(u *s3manager.Uploader) {
+		u.MaxUploadParts = 10000       // set to maximum allowed by s3
+		u.PartSize = 128 * 1024 * 1024 // 128MB
+	})
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("upload %s:%s", host, file))
 	}

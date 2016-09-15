@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -113,13 +114,11 @@ func (p *Prium) schemaBackup(parent, timestamp, host string) error {
 	if err != nil {
 		return errors.Wrap(err, "schema backup")
 	}
-	glog.Infof("schema file is : %s", schemaFile)
-
 	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz", p.config.AwsBasePath, p.config.Keyspace, parent, timestamp, p.config.Keyspace)
 
 	// upload files to s3
 	if err = p.s3.UploadFile(host, schemaFile, key); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("upload @ %s", host))
+		return errors.Wrap(err, fmt.Sprintf("schema upload @ %s", host))
 	}
 
 	return nil
@@ -144,7 +143,7 @@ func (p *Prium) SnapshotHistory() error {
 // restore function to determine which backup is the latest as well as the
 // order of incremental backups.
 func (p *Prium) NewTimestamp() string {
-	return time.Now().Format("2006-01-02_15:04:05")
+	return time.Now().Format("2006-01-02_150405")
 }
 
 // Restore cassandra from a given snapshot.
@@ -152,21 +151,21 @@ func (p *Prium) NewTimestamp() string {
 // cassandra host.
 func (p *Prium) Restore() error {
 
+	glog.Infof("start restoring keyspace: %s", p.config.Keyspace)
+
 	// get all cassandra hosts
 	hosts := p.cassandra.Hosts()
 	if len(hosts) == 0 {
 		return fmt.Errorf("did not find valid cassandra hosts")
 	}
-
 	snapshot := p.config.Snapshot
-	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
-	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
 
 	// get snapshot history
 	if err := p.SnapshotHistory(); err != nil {
 		return err
 	}
 
+	// determine which snapshot to restore to
 	if snapshot == "" {
 		snapshots := p.hist.List()
 		if len(snapshots) > 0 {
@@ -177,37 +176,109 @@ func (p *Prium) Restore() error {
 		return fmt.Errorf("no existing backup to restore from")
 	}
 
+	// check if this a valid snapshot
 	if !p.hist.Valid(snapshot) {
 		return fmt.Errorf("%s is not a valid snapshot", snapshot)
 	}
 	glog.Infof("restoring to snapshot: %s", snapshot)
 
+	// drop keyspace
+	if err := p.deleteKeyspace(hosts[0]); err != nil {
+		glog.Errorf("error deleting keyspace: %s", err)
+		return errors.Wrap(err, "error deleting keyspace")
+	}
+
+	// create schema
+	if err := p.createSchema(hosts[0], snapshot); err != nil {
+		glog.Errorf("error deleting keyspace: %s", err)
+		return errors.Wrap(err, "error deleting keyspace")
+	}
+
+	// load data
+	if err := p.loadSnapshot(hosts[0], snapshot); err != nil {
+		return errors.Wrap(err, "error loading snapshot")
+	}
+	return nil
+}
+
+// deleteKeyspace deletes keyspace.
+func (p *Prium) deleteKeyspace(host string) error {
+
+	cmd := fmt.Sprintf("echo 'DROP KEYSPACE IF EXISTS %s;' | %s", p.config.Keyspace, p.config.CqlshPath)
+	_, err := p.agent.Run(host, cmd)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// createSchema creates the schema from backup for given snapshot.
+func (p *Prium) createSchema(host, snapshot string) error {
+
+	// get parent
+	parent := p.hist.Parent(snapshot)
+
+	// schema key
+	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz", p.config.AwsBasePath, p.config.Keyspace, parent, snapshot, p.config.Keyspace)
+
+	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
+	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
+
+	// download schema file
+	localFile, err := p.s3.downloadKey(key, localTmpDir)
+	if err != nil {
+		return errors.Wrap(err, "error downloading schema key")
+	}
+
+	// copy schema file to cassandra host
+	remoteFile := strings.TrimSuffix(path.Join(remoteTmpDir, key), ".gz")
+	err = p.agent.UploadFile(host, localFile, path.Dir(remoteFile))
+	if err != nil {
+		return errors.Wrap(err, "error uploading file")
+	}
+
+	// create schema
+	cmd := fmt.Sprintf("cat %s | %s", remoteFile, p.config.CqlshPath)
+	_, err = p.agent.Run(host, cmd)
+	if err != nil {
+		return errors.Wrap(err, "failed creating schema")
+	}
+	return nil
+}
+
+// loadSnapshot loads snapshot to cassandra.
+func (p *Prium) loadSnapshot(host, snapshot string) error {
+
+	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
+	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
+
+	// get list of keys to download
 	keys, err := p.hist.Keys(snapshot)
 	if err != nil {
 		return errors.Wrap(err, "failed to get all keys")
 	}
 
+	// download keys
 	files, err := p.s3.downloadKeys(keys, localTmpDir)
 	if err != nil {
 		return errors.Wrap(err, "error downloading keys")
 	}
 
-	// upload files to first availanle host
-	dirs, err := p.uploadFilesToHost(hosts[0], remoteTmpDir, files)
+	// upload files to host
+	dirs, err := p.uploadFilesToHost(host, remoteTmpDir, files)
 	if err != nil {
 		return errors.Wrap(err, "could not upload files to host")
 	}
 
-	// take snapshot on each host
-	err = p.cassandra.sstableload(hosts[0], dirs)
+	// run sstableload
+	err = p.cassandra.sstableload(host, dirs)
 	if err != nil {
 		return errors.Wrap(err, "failed to run sstableloader")
 	}
-
 	return nil
 }
 
-// uploadFilesToHost copies cassandra failes to a local directory on
+// uploadFilesToHost copies cassandra files to a local directory on
 // one of the cassandra hosts.
 func (p *Prium) uploadFilesToHost(host, remoteTmpDir string, files map[string]string) (map[string]bool, error) {
 	dirs := make(map[string]bool)
