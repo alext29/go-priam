@@ -1,4 +1,4 @@
-package prium
+package priam
 
 import (
 	"flag"
@@ -11,7 +11,7 @@ import (
 	"path"
 )
 
-// Config holds prium configuration parameters.
+// Config holds priam configuration parameters.
 type Config struct {
 	AwsAccessKey  string `yaml:"aws-access-key"`
 	AwsBasePath   string `yaml:"aws-base-path"`
@@ -31,7 +31,7 @@ type Config struct {
 	User          string
 }
 
-// NewConfig returns prium configuration. It starts with the default config,
+// NewConfig returns priam configuration. It starts with the default config,
 // superseeding these by parameters in config file, and finally
 // superseeding them with command line flags.
 func NewConfig() (*Config, error) {
@@ -55,30 +55,30 @@ func NewConfig() (*Config, error) {
 	return config, nil
 }
 
-// DefaultConfig provides a starting point config for prium.
+// DefaultConfig provides a starting point config for priam.
 func DefaultConfig() (*Config, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting current user")
 	}
 	return &Config{
-		AwsBasePath:   "go-prium-test",
+		AwsBasePath:   "go-priam-test",
 		AwsRegion:     "us-east-1",
 		CassandraConf: "/etc/cassandra",
 		CqlshPath:     "/usr/local/bin/cqlsh",
 		Nodetool:      "/usr/bin/nodetool",
 		PrivateKey:    path.Join(usr.HomeDir, ".ssh", "id_rsa"),
 		Sstableloader: "/usr/bin/sstableloader",
-		TempDir:       "/tmp/go-prium/restore",
+		TempDir:       "/tmp/go-priam/restore",
 		User:          usr.Username,
 	}, nil
 }
 
-// configFile returns path to prium config file.
+// configFile returns path to priam config file.
 func configFile() string {
 
 	// use environment variable if set
-	confFile := os.Getenv("PRIUM_CONF")
+	confFile := os.Getenv("PRIAM_CONF")
 	if confFile != "" {
 		return confFile
 	}
@@ -88,10 +88,10 @@ func configFile() string {
 	if err != nil {
 		return ""
 	}
-	return path.Join(usr.HomeDir, ".prium.conf")
+	return path.Join(usr.HomeDir, ".priam.conf")
 }
 
-// parseFile parses prium config file. These may be overrided via
+// parseFile parses priam config file. These may be overrided via
 // command line flags.
 func (c *Config) parseFile(confFile string) error {
 	if confFile == "" {

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/alext29/go-prium/prium"
+	"github.com/alext29/go-priam/priam"
 	"github.com/golang/glog"
 	"os"
 )
@@ -11,13 +11,13 @@ import (
 func main() {
 
 	// get configuration file
-	config, err := prium.NewConfig()
+	config, err := priam.NewConfig()
 	if err != nil {
 		glog.Error(err)
 		printUsage()
 		return
 	}
-	glog.V(2).Infof("prium config %s", config)
+	glog.V(2).Infof("priam config %s", config)
 
 	// make sure we have a command
 	if len(flag.Args()) == 0 {
@@ -26,8 +26,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// create prium object
-	p := prium.New(config)
+	// create priam object
+	p := priam.New(config)
 
 	// parse and run command
 	switch flag.Arg(0) {
@@ -57,7 +57,7 @@ func main() {
 
 func printUsage() {
 	fmt.Println(`
-USAGE: go-prium [OPTIONS] COMMAND
+USAGE: go-priam [OPTIONS] COMMAND
 
 COMMAND
 

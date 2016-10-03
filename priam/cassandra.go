@@ -1,4 +1,4 @@
-package prium
+package priam
 
 import (
 	"fmt"

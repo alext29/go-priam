@@ -1,12 +1,12 @@
-# go-prium - Backup and restore Cassandra DB to AWS S3
-[![GoDoc](https://godoc.org/github.com/alext29/go-prium?status.svg)](https://godoc.org/github.com/alext29/go-prium/prium)
+# go-priam - Backup and restore Cassandra DB to AWS S3
+[![GoDoc](https://godoc.org/github.com/alext29/go-priam?status.svg)](https://godoc.org/github.com/alext29/go-priam/priam)
 
-go-prium provides a simple method for backing up cassandra keyspaces to Amazon AWS S3 bucket. It is written in go and uses nodetool for performing backups and sstableloader for restoring from backups.
+go-priam provides a simple method for backing up cassandra keyspaces to Amazon AWS S3 bucket. It is written in go and uses nodetool for performing backups and sstableloader for restoring from backups.
 
 ## Install
 If you have Go installed, then do:
 
-`go get github.com/alext29/go-prium`
+`go get github.com/alext29/go-priam`
 
 This should download, compile and install the app on your machine.
 
@@ -23,15 +23,15 @@ Before you begin there is a little bit of housekeeping to do.
 Backup operation generates timestamps based on current time. The code would barf if monotonicity of backup timestamps cannot be maintained.
 
 ### Full Backup:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> backup`
+`go-priam [OPTIONS] -keyspace <KEYSPACE> backup`
 
 ### Incremental Backup:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> -incremental backup`
+`go-priam [OPTIONS] -keyspace <KEYSPACE> -incremental backup`
 
 Incremental backup uploads only the additional files needed for backup, and links to the last backup taken.
 
 ### List backups:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> history`
+`go-priam [OPTIONS] -keyspace <KEYSPACE> history`
 
 Prints out timestamps of all existing backups, including incremental backups, in a tree form.
 
@@ -40,15 +40,15 @@ Prints out timestamps of all existing backups, including incremental backups, in
 **Restore operation will delete all existing data in given keyspace and restore to given timestamp.** Any data between added to the DB between backup and restore time would be lost.
 
 ### Restoring to last backup:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> restore`
+`go-priam [OPTIONS] -keyspace <KEYSPACE> restore`
 
 ### Restoring to specific timestamp:
-`go-prium [OPTIONS] -keyspace <KEYSPACE> -timestamp <TIMESTAMP> restore`
+`go-priam [OPTIONS] -keyspace <KEYSPACE> -timestamp <TIMESTAMP> restore`
 
 When restoring to an incremental backup, all necessary files till the last full backup are downloaded and restored from. Timestamp is assumed to be monotonically increasing else the code would barf while take backup.
 
 ## Configuration parameters
-`go-prium help`  gives a complete list of all command line parameters.
+`go-priam help`  gives a complete list of all command line parameters.
 
 ```bash
 	-incremental            Switch to indicate incremental backup.
@@ -70,6 +70,6 @@ When restoring to an incremental backup, all necessary files till the last full 
 ```
 
 ## Configuration file
-Configuration parameters may be specified in a yaml file as well. The default location for the configuration file is `${HOME_DIR}/.prium.conf` or you may point it to any arbritary file by setting `$PRIUM_CONF` environment variable.
+Configuration parameters may be specified in a yaml file as well. The default location for the configuration file is `${HOME_DIR}/.priam.conf` or you may point it to any arbritary file by setting `$PRIAM_CONF` environment variable.
 
-A sample config file [prium.conf](https://github.com/alext29/go-prium/blob/master/prium.conf) is provided for reference.
+A sample config file [priam.conf](https://github.com/alext29/go-priam/blob/master/priam.conf) is provided for reference.

@@ -1,4 +1,4 @@
-package prium
+package priam
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// Prium object provides backup and restore of cassandra DB to AWS S3.
-type Prium struct {
+// Priam object provides backup and restore of cassandra DB to AWS S3.
+type Priam struct {
 	agent     *Agent
 	cassandra *Cassandra
 	config    *Config
@@ -18,10 +18,10 @@ type Prium struct {
 	hist      *SnapshotHistory
 }
 
-// New returns a new Prium object.
-func New(config *Config) *Prium {
+// New returns a new Priam object.
+func New(config *Config) *Priam {
 	agent := NewAgent(config)
-	return &Prium{
+	return &Priam{
 		agent:     agent,
 		config:    config,
 		cassandra: NewCassandra(config, agent),
@@ -30,7 +30,7 @@ func New(config *Config) *Prium {
 }
 
 // History prints the current list of backups in S3.
-func (p *Prium) History() error {
+func (p *Priam) History() error {
 
 	// get snapshot history
 	if err := p.SnapshotHistory(); err != nil {
@@ -42,7 +42,7 @@ func (p *Prium) History() error {
 
 // Backup flushes all cassandra tables to disk identifies the appropriate
 // files and copies them to the specified AWS S3 bucket.
-func (p *Prium) Backup() error {
+func (p *Priam) Backup() error {
 
 	glog.Infof("start taking backup...")
 
@@ -107,7 +107,7 @@ func (p *Prium) Backup() error {
 	return nil
 }
 
-func (p *Prium) schemaBackup(parent, timestamp, host string) error {
+func (p *Priam) schemaBackup(parent, timestamp, host string) error {
 
 	// get schema backup
 	schemaFile, err := p.cassandra.SchemaBackup(host)
@@ -125,7 +125,7 @@ func (p *Prium) schemaBackup(parent, timestamp, host string) error {
 }
 
 // SnapshotHistory returns snapshot history
-func (p *Prium) SnapshotHistory() error {
+func (p *Priam) SnapshotHistory() error {
 	if p.hist != nil {
 		return nil
 	}
@@ -142,14 +142,14 @@ func (p *Prium) SnapshotHistory() error {
 // The code assumes timestamps are monotonically increasing and is used by
 // restore function to determine which backup is the latest as well as the
 // order of incremental backups.
-func (p *Prium) NewTimestamp() string {
+func (p *Priam) NewTimestamp() string {
 	return time.Now().Format("2006-01-02_150405")
 }
 
 // Restore cassandra from a given snapshot.
 // TODO: if restoring from a cassandra node then skip copying file to
 // cassandra host.
-func (p *Prium) Restore() error {
+func (p *Priam) Restore() error {
 
 	glog.Infof("start restoring keyspace: %s", p.config.Keyspace)
 
@@ -202,7 +202,7 @@ func (p *Prium) Restore() error {
 }
 
 // deleteKeyspace deletes keyspace.
-func (p *Prium) deleteKeyspace(host string) error {
+func (p *Priam) deleteKeyspace(host string) error {
 
 	cmd := fmt.Sprintf("echo 'DROP KEYSPACE IF EXISTS %s;' | %s", p.config.Keyspace, p.config.CqlshPath)
 	_, err := p.agent.Run(host, cmd)
@@ -213,7 +213,7 @@ func (p *Prium) deleteKeyspace(host string) error {
 }
 
 // createSchema creates the schema from backup for given snapshot.
-func (p *Prium) createSchema(host, snapshot string) error {
+func (p *Priam) createSchema(host, snapshot string) error {
 
 	// get parent
 	parent := p.hist.Parent(snapshot)
@@ -247,7 +247,7 @@ func (p *Prium) createSchema(host, snapshot string) error {
 }
 
 // loadSnapshot loads snapshot to cassandra.
-func (p *Prium) loadSnapshot(host, snapshot string) error {
+func (p *Priam) loadSnapshot(host, snapshot string) error {
 
 	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
 	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
@@ -280,7 +280,7 @@ func (p *Prium) loadSnapshot(host, snapshot string) error {
 
 // uploadFilesToHost copies cassandra files to a local directory on
 // one of the cassandra hosts.
-func (p *Prium) uploadFilesToHost(host, remoteTmpDir string, files map[string]string) (map[string]bool, error) {
+func (p *Priam) uploadFilesToHost(host, remoteTmpDir string, files map[string]string) (map[string]bool, error) {
 	dirs := make(map[string]bool)
 	for key, localFile := range files {
 		glog.V(2).Infof("copy to %s: %s", host, key)
