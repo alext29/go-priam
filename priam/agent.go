@@ -46,7 +46,7 @@ func (a *Agent) UploadFile(host, localFile, remotePath string) error {
 	// create remote dir
 	_, err := a.Run(host, fmt.Sprintf("mkdir -p %s", remotePath))
 	if err != nil {
-		return errors.Wrap(err, "could not create remote directory")
+		return errors.Wrapf(err, "error creating dir %s on %s", remotePath, host)
 	}
 
 	// copy file
@@ -56,7 +56,7 @@ func (a *Agent) UploadFile(host, localFile, remotePath string) error {
 	dst := fmt.Sprintf("%s@%s:%s", a.user, host, remotePath)
 	cmd.Args = append(cmd.Args, dst)
 	if _, err := cmd.CombinedOutput(); err != nil {
-		return errors.Wrap(err, "could not copy file to cassandra host")
+		return errors.Wrapf(err, "error copying %s to %s", localFile, dst)
 	}
 	return nil
 }
@@ -76,7 +76,7 @@ func (a *Agent) List(host, dir, t string) ([]string, error) {
 	dir = path.Clean(dir)
 	bytes, err := a.Run(host, fmt.Sprintf("find %s -maxdepth 1 -type %s", dir, t))
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("error listing dir %s on host %s", dir, host))
+		return nil, errors.Wrapf(err, "error listing dir %s on host %s", dir, host)
 	}
 	return strings.Split(string(bytes), "\n"), nil
 }
@@ -86,7 +86,7 @@ func (a *Agent) ReadFile(host, file string) (io.Reader, error) {
 
 	s, err := a.session(host)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting ssh session")
+		return nil, errors.Wrapf(err, "ssh session to %s failed", host)
 	}
 	cmd := fmt.Sprintf("cat %s", file)
 	out, err := s.StdoutPipe()
@@ -95,7 +95,7 @@ func (a *Agent) ReadFile(host, file string) (io.Reader, error) {
 	}
 	err = s.Start(cmd)
 	if err != nil {
-		return nil, errors.Wrap(err, "error reading file")
+		return nil, errors.Wrapf(err, "error reading file cmd: %s", cmd)
 	}
 	return out, nil
 }
@@ -104,7 +104,7 @@ func (a *Agent) ReadFile(host, file string) (io.Reader, error) {
 func (a *Agent) Run(host, cmd string) ([]byte, error) {
 	s, err := a.session(host)
 	if err != nil {
-		return nil, errors.Wrap(err, "ssh session failed")
+		return nil, errors.Wrapf(err, "ssh session to %s failed", host)
 	}
 	glog.V(2).Infof("run@%s: %s", host, cmd)
 	return s.CombinedOutput(cmd)
@@ -115,12 +115,12 @@ func (a *Agent) session(host string) (*ssh.Session, error) {
 
 	client, err := a.client(host)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("host: %s", host))
+		return nil, errors.Wrapf(err, "failed client to %s", host)
 	}
 
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("host: %s", host))
+		return nil, errors.Wrapf(err, "failed session to %s", host)
 	}
 	return session, nil
 }
@@ -138,12 +138,12 @@ func (a *Agent) client(host string) (*ssh.Client, error) {
 
 	key, err := ioutil.ReadFile(a.privateKey)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("error reading private key %s", a.privateKey))
+		return nil, errors.Wrapf(err, "error reading private key %s", a.privateKey)
 	}
 
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		return nil, errors.Wrap(err, "error parsing private key")
+		return nil, errors.Wrapf(err, "error parsing private key %s", a.privateKey)
 	}
 
 	// ssh client config
@@ -156,7 +156,7 @@ func (a *Agent) client(host string) (*ssh.Client, error) {
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), clientConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "error connecting to host")
+		return nil, errors.Wrapf(err, "error connecting to host %s", host)
 	}
 	a.clients[host] = client
 	return client, nil

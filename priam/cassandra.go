@@ -72,7 +72,7 @@ func (c *Cassandra) SnapshotFull(host, ts string) ([]string, []string, error) {
 	cmd := fmt.Sprintf("%s snapshot -t %s %s", c.config.Nodetool, ts, c.config.Keyspace)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, fmt.Sprintf("error taking snapshot on host %s with output %s", host, bytes))
+		return nil, nil, errors.Wrapf(err, "error taking snapshot on host %s with output %s", host, bytes)
 	}
 	return c.snapshotFullFiles(host, ts)
 }
@@ -83,7 +83,7 @@ func (c *Cassandra) snapshotFullFiles(host, ts string) ([]string, []string, erro
 	// download cassandra yaml files
 	dataDirs, err := c.hostDataDirs(host)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting data directories from host")
+		return nil, nil, errors.Wrap(err, "error getting data dir from host")
 	}
 
 	var files []string
@@ -121,7 +121,7 @@ func (c *Cassandra) SnapshotInc(host string) ([]string, []string, error) {
 	cmd := fmt.Sprintf("%s flush  %s", c.config.Nodetool, c.config.Keyspace)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, fmt.Sprintf("error running flush on host %s with output %s", host, bytes))
+		return nil, nil, errors.Wrap(err, "error running flush on host %s with output %s", host, bytes)
 	}
 	return c.snapshotIncFiles(host)
 }

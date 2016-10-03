@@ -91,17 +91,17 @@ func (p *Priam) Backup() error {
 		// create snapshot
 		files, dirs, err := p.cassandra.Snapshot(host, timestamp)
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("snapshot @ %s", host))
+			return errors.Wrapf(err, "snapshot @ %s", host)
 		}
 
 		// upload files to s3
 		if err = p.s3.UploadFiles(parent, timestamp, host, files); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("upload @ %s", host))
+			return errors.Wrapf(err, "upload @ %s", host)
 		}
 
 		// delete local files
 		if err = p.cassandra.deleteSnapshot(host, dirs); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("delete @ %s", host))
+			return errors.Wrapf(err, "delete @ %s", host)
 		}
 	}
 	return nil
@@ -118,7 +118,7 @@ func (p *Priam) schemaBackup(parent, timestamp, host string) error {
 
 	// upload files to s3
 	if err = p.s3.UploadFile(host, schemaFile, key); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("schema upload @ %s", host))
+		return errors.Wrapf(err, "schema upload @ %s", host)
 	}
 
 	return nil

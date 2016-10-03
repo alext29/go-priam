@@ -58,7 +58,7 @@ func (s *S3) UploadFile(host, file, key string) error {
 	// read bytes from file@host
 	r, err := s.agent.ReadFile(host, file)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("read %s:%s", host, file))
+		return errors.Wrapf(err, "error reading %s:%s", host, file)
 	}
 
 	// gzip files before uploading
@@ -83,7 +83,7 @@ func (s *S3) UploadFile(host, file, key string) error {
 		u.PartSize = 128 * 1024 * 1024 // 128MB
 	})
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("upload %s:%s", host, file))
+		return errors.Wrapf(err, "error uploading %s:%s", host, file)
 	}
 	return nil
 }
@@ -107,7 +107,7 @@ func (s *S3) downloadKeys(keys []string, prefix string) (map[string]string, erro
 	for _, key := range keys {
 		file, err := s.downloadKey(key, prefix)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("download %s", key))
+			return nil, errors.Wrapf(err, "error downloading %s", key)
 		}
 		files[key] = file
 	}
@@ -123,13 +123,13 @@ func (s *S3) downloadKey(key, prefix string) (string, error) {
 	}
 	resp, err := s.svc.GetObject(params)
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("error downloading key: %s", key))
+		return "", errors.Wrapf(err, "error downloading key: %s", key)
 	}
 
 	dir := path.Dir(fileName)
 	err = os.MkdirAll(dir, os.ModeDir|os.ModePerm)
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("error creading dir %s", dir))
+		return "", errors.Wrapf(err, "error creading dir %s", dir)
 	}
 
 	file, err := os.Create(fileName)

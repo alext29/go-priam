@@ -44,7 +44,7 @@ func NewConfig() (*Config, error) {
 
 	// parse config file
 	if err := config.parseFile(configFile()); err != nil {
-		return nil, errors.Wrap(err, "error parsing config file")
+		return nil, errors.Wrapf(err, "error parsing config file %s", configFile())
 	}
 
 	// parse command line flags
@@ -105,12 +105,12 @@ func (c *Config) parseFile(confFile string) error {
 	fmt.Printf("reading conf file: %s\n", confFile)
 	bytes, err := ioutil.ReadFile(confFile)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("error reading conf file %s", confFile))
+		return errors.Wrapf(err, "error reading conf file %s", confFile)
 	}
 
 	err = yaml.Unmarshal(bytes, c)
 	if err != nil {
-		return errors.Wrap(err, "error unmarshaling conf file")
+		return errors.Wrapf(err, "error unmarshaling conf file %s", confFile)
 	}
 	return nil
 }
