@@ -121,7 +121,7 @@ func (c *Cassandra) SnapshotInc(host string) ([]string, []string, error) {
 	cmd := fmt.Sprintf("%s flush  %s", c.config.Nodetool, c.config.Keyspace)
 	bytes, err := c.agent.Run(host, cmd)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error running flush on host %s with output %s", host, bytes)
+		return nil, nil, errors.Wrapf(err, "error running flush on host %s with output %s", host, bytes)
 	}
 	return c.snapshotIncFiles(host)
 }
