@@ -97,7 +97,8 @@ func (s *S3) getFileKey(parent, timestamp, host, file string) string {
 		dir, _ = path.Split(path.Clean(dir))
 	}
 	return fmt.Sprintf("/%s/%s/%s/%s/%s%s%s.gz",
-		s.config.AwsBasePath, s.config.Keyspace, parent, timestamp, host, dir, base)
+		s.config.AwsBasePath, s.config.Keyspace, parent,
+		timestamp, host, dir, base)
 }
 
 // downloadKeys downloads a list of keys from S3 to local machine.

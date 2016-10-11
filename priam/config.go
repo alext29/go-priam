@@ -13,22 +13,23 @@ import (
 
 // Config holds priam configuration parameters.
 type Config struct {
-	AwsAccessKey  string `yaml:"aws-access-key"`
-	AwsBasePath   string `yaml:"aws-base-path"`
-	AwsBucket     string `yaml:"aws-bucket"`
-	AwsRegion     string `yaml:"aws-region"`
-	AwsSecretKey  string `yaml:"aws-secret-key"`
-	CassandraConf string `yaml:"cassandra-conf"`
-	CqlshPath     string `yaml:"cqlsh-path"`
-	Host          string
-	Incremental   bool
-	Keyspace      string
-	Nodetool      string
-	TempDir       string `yaml:"temp-dir"`
-	PrivateKey    string `yaml:"private-key"`
-	Snapshot      string
-	Sstableloader string
-	User          string
+	AwsAccessKey       string `yaml:"aws-access-key"`
+	AwsBasePath        string `yaml:"aws-base-path"`
+	AwsBucket          string `yaml:"aws-bucket"`
+	AwsRegion          string `yaml:"aws-region"`
+	AwsSecretKey       string `yaml:"aws-secret-key"`
+	CassandraClasspath string `yaml:"cassandra-classpath"`
+	CassandraConf      string `yaml:"cassandra-conf"`
+	CqlshPath          string `yaml:"cqlsh-path"`
+	Host               string
+	Incremental        bool
+	Keyspace           string
+	Nodetool           string
+	TempDir            string `yaml:"temp-dir"`
+	PrivateKey         string `yaml:"private-key"`
+	Snapshot           string
+	Sstableloader      string
+	User               string
 }
 
 // NewConfig returns priam configuration. It starts with the default config,
@@ -91,7 +92,7 @@ func configFile() string {
 	return path.Join(usr.HomeDir, ".priam.conf")
 }
 
-// parseFile parses priam config file. These may be overrided via
+// parseFile parses priam config file. These may be overriden via
 // command line flags.
 func (c *Config) parseFile(confFile string) error {
 	if confFile == "" {
@@ -123,6 +124,7 @@ func (c *Config) parseFlags() error {
 	flag.StringVar(&c.AwsBucket, "aws-bucket", c.AwsBucket, "bucket name to store backups")
 	flag.StringVar(&c.AwsRegion, "aws-region", c.AwsRegion, "region of s3 account")
 	flag.StringVar(&c.AwsSecretKey, "aws-secret-key", c.AwsSecretKey, "AWS Secret Access key to access S3")
+	flag.StringVar(&c.CassandraClasspath, "cassandra-classpath", c.CassandraClasspath, "directory where cassandra classfiles are placed")
 	flag.StringVar(&c.CassandraConf, "cassandra-conf", c.CassandraConf, "directory where cassandra conf files are placed")
 	flag.StringVar(&c.CqlshPath, "cqlsh-path", c.CqlshPath, "path to cqlsh")
 	flag.StringVar(&c.Host, "host", c.Host, "ip address of any one of the cassandra hosts")
@@ -138,7 +140,7 @@ func (c *Config) parseFlags() error {
 	return c.validateConfig()
 }
 
-// TODO: validateConfig checks if all required parameters are provided.
+// validateConfig checks if all required parameters are provided.
 func (c *Config) validateConfig() error {
 	switch {
 	case c.AwsAccessKey == "":
@@ -151,6 +153,8 @@ func (c *Config) validateConfig() error {
 		return fmt.Errorf("path to private key for passwordless ssh to cassandra hosts")
 	case c.Nodetool == "":
 		return fmt.Errorf("path to nodetool not provided")
+	case c.CassandraClasspath == "":
+		return fmt.Errorf("path to casandra jarfiles not provided")
 	case c.CassandraConf == "":
 		return fmt.Errorf("path to casandra conf not provided")
 	case c.Host == "":
@@ -171,6 +175,7 @@ func (c *Config) String() string {
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-bucket", c.AwsBucket)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-region", c.AwsRegion)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "aws-secret-key", c.AwsSecretKey)
+	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cassandra-classpath", c.CassandraClasspath)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cassandra-conf", c.CassandraConf)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "cqlsh-path", c.CqlshPath)
 	str = fmt.Sprintf("%s\n\t\"%s\": \"%s\",", str, "host", c.Host)

@@ -1,7 +1,7 @@
 # go-priam - Backup and restore Cassandra DB to AWS S3
 [![GoDoc](https://godoc.org/github.com/alext29/go-priam?status.svg)](https://godoc.org/github.com/alext29/go-priam/priam)
 
-go-priam provides a simple method for backing up cassandra keyspaces to Amazon AWS S3 bucket. It is written in go and uses nodetool for performing backups and sstableloader for restoring from backups.
+go-priam provides a simple method for backing up cassandra keyspaces to Amazon AWS S3 bucket. It is written in go/golang and uses nodetool for performing backups and sstableloader for restoring from backups.
 
 ## Install
 If you have Go installed, then do:
@@ -20,7 +20,7 @@ Before you begin there is a little bit of housekeeping to do.
 
 ## Backup
 
-Backup operation generates timestamps based on current time. The code would barf if monotonicity of backup timestamps cannot be maintained.
+Backup operation generates timestamps based on current time. The generated timestamp should be newer than last backup, else it would complain.
 
 ### Full Backup:
 `go-priam [OPTIONS] -keyspace <KEYSPACE> backup`
@@ -28,7 +28,7 @@ Backup operation generates timestamps based on current time. The code would barf
 ### Incremental Backup:
 `go-priam [OPTIONS] -keyspace <KEYSPACE> -incremental backup`
 
-Incremental backup uploads only the additional files needed for backup, and links to the last backup taken.
+Incremental backup only uploads the incremental data with respect to the last backup. It it fails to find a previous backup it will do a full backup.
 
 ### List backups:
 `go-priam [OPTIONS] -keyspace <KEYSPACE> history`
@@ -37,7 +37,7 @@ Prints out timestamps of all existing backups, including incremental backups, in
 
 ## Restore
 
-**Restore operation will delete all existing data in given keyspace and restore to given timestamp.** Any data between added to the DB between backup and restore time would be lost.
+**Restore operation will delete all existing data in given keyspace and restore to given timestamp.** Any data added to the DB post backup would be lost.
 
 ### Restoring to last backup:
 `go-priam [OPTIONS] -keyspace <KEYSPACE> restore`
@@ -57,6 +57,7 @@ When restoring to an incremental backup, all necessary files till the last full 
 	-aws-bucket             S3 bucket name to store backups.
 	-aws-region             Region of s3 account.
 	-aws-secret-key         AWS Secret Access key to access S3.
+	--cassandra-classpath   Directory where cassandra jarfiles are placed.
 	-cassandra-conf         Directory where cassandra conf files are placed.
 	-cqlsh-path             Path to cqlsh.
 	-host                   IP address of any one of the cassandra nodes.

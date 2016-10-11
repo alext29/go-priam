@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		glog.Error(err)
 		printUsage()
-		return
+		os.Exit(1)
 	}
 	glog.V(2).Infof("priam config %s", config)
 
@@ -61,9 +61,9 @@ USAGE: go-priam [OPTIONS] COMMAND
 
 COMMAND
 
-	backup          Backup cassandra DB to AWS S3 bucket.
-	restore         Restore from a previous backup.
-	history         Shows tree of all backups, including incremental backups.
+	backup                  Backup cassandra DB to AWS S3 bucket.
+	restore                 Restore from a previous backup.
+	history                 Shows tree of all backups, including incremental backups.
 
 OPTIONS
 
@@ -73,6 +73,7 @@ OPTIONS
 	-aws-bucket             S3 bucket name to store backups.
 	-aws-region             Region of S3 account.
 	-aws-secret-key         AWS Secret Access key to access S3.
+	-cassandra-classpath    Directory where cassandra jar files are placed.
 	-cassandra-conf         Directory where cassandra conf files are placed.
 	-cqlsh-path             Path fo cqlsh.
 	-host                   IP address of any one of the cassandra nodes.
