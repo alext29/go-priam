@@ -84,7 +84,7 @@ func (p *Priam) Backup() error {
 	}
 
 	// take snapshot on each host
-	// TODO: do in parallel
+	// TODO: this could be done in parallel
 	for _, host := range hosts {
 		glog.Infof("snapshot @ %s", host)
 
@@ -114,7 +114,9 @@ func (p *Priam) schemaBackup(parent, timestamp, host string) error {
 	if err != nil {
 		return errors.Wrap(err, "schema backup")
 	}
-	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz", p.config.AwsBasePath, p.config.Keyspace, parent, timestamp, p.config.Keyspace)
+	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz",
+		p.config.AwsBasePath, p.config.Keyspace,
+		parent, timestamp, p.config.Keyspace)
 
 	// upload files to s3
 	if err = p.s3.UploadFile(host, schemaFile, key); err != nil {
@@ -184,14 +186,12 @@ func (p *Priam) Restore() error {
 
 	// drop keyspace
 	if err := p.deleteKeyspace(hosts[0]); err != nil {
-		glog.Errorf("error deleting keyspace: %s", err)
 		return errors.Wrap(err, "error deleting keyspace")
 	}
 
 	// create schema
 	if err := p.createSchema(hosts[0], snapshot); err != nil {
-		glog.Errorf("error deleting keyspace: %s", err)
-		return errors.Wrap(err, "error deleting keyspace")
+		return errors.Wrap(err, "error creating schema")
 	}
 
 	// load data
@@ -204,7 +204,8 @@ func (p *Priam) Restore() error {
 // deleteKeyspace deletes keyspace.
 func (p *Priam) deleteKeyspace(host string) error {
 
-	cmd := fmt.Sprintf("echo 'DROP KEYSPACE IF EXISTS %s;' | %s", p.config.Keyspace, p.config.CqlshPath)
+	cmd := fmt.Sprintf("echo 'DROP KEYSPACE IF EXISTS %s;' | %s",
+		p.config.Keyspace, p.config.CqlshPath)
 	_, err := p.agent.Run(host, cmd)
 	if err != nil {
 		return err
@@ -219,7 +220,9 @@ func (p *Priam) createSchema(host, snapshot string) error {
 	parent := p.hist.Parent(snapshot)
 
 	// schema key
-	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz", p.config.AwsBasePath, p.config.Keyspace, parent, snapshot, p.config.Keyspace)
+	key := fmt.Sprintf("/%s/%s/%s/%s/%s.schema.gz",
+		p.config.AwsBasePath, p.config.Keyspace,
+		parent, snapshot, p.config.Keyspace)
 
 	localTmpDir := fmt.Sprintf("%s/local", p.config.TempDir)
 	remoteTmpDir := fmt.Sprintf("%s/remote", p.config.TempDir)
@@ -280,7 +283,9 @@ func (p *Priam) loadSnapshot(host, snapshot string) error {
 
 // uploadFilesToHost copies cassandra files to a local directory on
 // one of the cassandra hosts.
-func (p *Priam) uploadFilesToHost(host, remoteTmpDir string, files map[string]string) (map[string]bool, error) {
+func (p *Priam) uploadFilesToHost(host, remoteTmpDir string,
+	files map[string]string) (map[string]bool, error) {
+
 	dirs := make(map[string]bool)
 	for key, localFile := range files {
 		glog.V(2).Infof("copy to %s: %s", host, key)

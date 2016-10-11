@@ -57,7 +57,7 @@ When restoring to an incremental backup, all necessary files till the last full 
 	-aws-bucket             S3 bucket name to store backups.
 	-aws-region             Region of s3 account.
 	-aws-secret-key         AWS Secret Access key to access S3.
-	--cassandra-classpath   Directory where cassandra jarfiles are placed.
+	-cassandra-classpath    Directory where cassandra jarfiles are placed.
 	-cassandra-conf         Directory where cassandra conf files are placed.
 	-cqlsh-path             Path to cqlsh.
 	-host                   IP address of any one of the cassandra nodes.
