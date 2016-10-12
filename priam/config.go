@@ -63,15 +63,16 @@ func DefaultConfig() (*Config, error) {
 		return nil, errors.Wrap(err, "error getting current user")
 	}
 	return &Config{
-		AwsBasePath:   "go-priam-test",
-		AwsRegion:     "us-east-1",
-		CassandraConf: "/etc/cassandra",
-		CqlshPath:     "/usr/local/bin/cqlsh",
-		Nodetool:      "/usr/bin/nodetool",
-		PrivateKey:    path.Join(usr.HomeDir, ".ssh", "id_rsa"),
-		Sstableloader: "/usr/bin/sstableloader",
-		TempDir:       "/tmp/go-priam/restore",
-		User:          usr.Username,
+		AwsBasePath:        "go-priam-test",
+		AwsRegion:          "us-east-1",
+		CassandraClasspath: "/usr/share/cassandra",
+		CassandraConf:      "/etc/cassandra",
+		CqlshPath:          "/usr/local/bin/cqlsh",
+		Nodetool:           "/usr/bin/nodetool",
+		PrivateKey:         path.Join(usr.HomeDir, ".ssh", "id_rsa"),
+		Sstableloader:      "/usr/bin/sstableloader",
+		TempDir:            "/tmp/go-priam/restore",
+		User:               usr.Username,
 	}, nil
 }
 
@@ -144,25 +145,25 @@ func (c *Config) parseFlags() error {
 func (c *Config) validateConfig() error {
 	switch {
 	case c.AwsAccessKey == "":
-		return fmt.Errorf("please provide AWS Access Key ID")
+		return fmt.Errorf("please provide AWS Access Key ID (aws-access-key)")
 	case c.AwsSecretKey == "":
-		return fmt.Errorf("please provide AWS Secret Access key")
+		return fmt.Errorf("please provide AWS Secret Access key (aws-secret-key)")
 	case c.AwsBucket == "":
-		return fmt.Errorf("please provide AWS S3 bucket name")
+		return fmt.Errorf("please provide AWS S3 bucket name (aws-bucket)")
 	case c.PrivateKey == "":
-		return fmt.Errorf("path to private key for passwordless ssh to cassandra hosts")
+		return fmt.Errorf("path to private key for passwordless ssh to cassandra hosts (private-key)")
 	case c.Nodetool == "":
-		return fmt.Errorf("path to nodetool not provided")
+		return fmt.Errorf("path to nodetool not provided (nodetool-path)")
 	case c.CassandraClasspath == "":
-		return fmt.Errorf("path to casandra jarfiles not provided")
+		return fmt.Errorf("path to casandra jarfiles not provided (cassandra-classpath)")
 	case c.CassandraConf == "":
-		return fmt.Errorf("path to casandra conf not provided")
+		return fmt.Errorf("path to casandra conf not provided (cassandra-conf)")
 	case c.Host == "":
-		return fmt.Errorf("please provide ip address of any cassandra node")
+		return fmt.Errorf("please provide ip address of any cassandra node (host)")
 	case c.User == "":
-		return fmt.Errorf("please provide username to use for passwordless ssh")
+		return fmt.Errorf("please provide username to use for passwordless ssh (user)")
 	case c.Sstableloader == "":
-		return fmt.Errorf("please provide path to sstableloader executable on cassandra host")
+		return fmt.Errorf("please provide path to sstableloader executable on cassandra host (sstableloader)")
 	}
 	return nil
 }
